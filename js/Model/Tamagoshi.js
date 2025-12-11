@@ -3,6 +3,6 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 
 export default class Tamagoshi {
     constructor(){
-
+        
     }
 }

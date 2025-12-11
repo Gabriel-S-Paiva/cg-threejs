@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 export default class App{
     constructor(){
@@ -10,9 +11,10 @@ export default class App{
         document.body.appendChild(this.renderer.domElement);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
 
+        const controls = new OrbitControls(this.camera, this.renderer.domElement);
+
         this.objects = [];
 
-        this.animate = this.animate.bind(this);
         this.animate();
     }
 
@@ -21,7 +23,7 @@ export default class App{
         this.objects.push(object);
     }
 
-    animate() {
+    animate = () => {
         requestAnimationFrame(this.animate);
         this.objects.forEach(object => object.update?.())
         this.renderer.render(this.scene, this.camera)
