@@ -1,0 +1,29 @@
+{
+  "name": "cg-threejs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gabriel-S-Paiva/cg-threejs.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Gabriel-S-Paiva/cg-threejs/issues"
+  },
+  "homepage": "https://github.com/Gabriel-S-Paiva/cg-threejs#readme",
+  "dependencies": {
+    "three": "^0.182.0",
+    "three-csg-ts": "^3.2.0"
+  },
+  "devDependencies": {
+    "vite": "^7.2.7"
+  }
+}
