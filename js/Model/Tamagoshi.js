@@ -7,8 +7,12 @@ export default class Tamagoshi extends THREE.Group {
         super()
 
         const egg = new Egg()
-        this.current_object = egg
-        this.add(egg)
+        const child = new Child()
+        child.scale.set(0.2,0.2,0.2)
+        child.position.y = 0.075
+        this.current_object = child
+
+        this.add(child)
     }
     update() {
         this.current_object.update?.()
