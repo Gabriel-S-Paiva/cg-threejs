@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import Egg from './Egg';
+import Child from './Child';
 
 export default class Tamagoshi extends THREE.Group {
     constructor(){

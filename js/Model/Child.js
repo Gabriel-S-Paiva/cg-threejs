@@ -2,6 +2,7 @@ import * as THREE from 'three';
 export default class Child extends THREE.Group {
     constructor() {
         super();
+        const helper = new THREE.AxesHelper(3)
 
         const earGeometry = new THREE.CapsuleGeometry(1,1,8,24)
         const earMaterial = new THREE.MeshNormalMaterial();
@@ -9,15 +10,15 @@ export default class Child extends THREE.Group {
         earLeft.scale.set(0.75,1,0.7)
         const leftPivot = new THREE.Object3D()
         leftPivot.rotation.z = -Math.PI/2
-        earLeft.position.x = -0.8
-        earLeft.position.y = 1.2
+        leftPivot.position.y = 1
+        earLeft.position.y = 1.5
         leftPivot.add(earLeft)
         const earRight = new THREE.Mesh(earGeometry,earMaterial);
         earRight.scale.set(0.75,1,0.7)
         const rightPivot = new THREE.Object3D()
-        rightPivot.rotation.z = -Math.PI/2
-        earRight.position.x = -3.2
-        earRight.position.y = 1.2
+        rightPivot.rotateZ(-Math.PI/2)
+        rightPivot.position.y = 3
+        earRight.position.y = 1.5
         rightPivot.add(earRight)
 
         const headCurve = new THREE.CubicBezierCurve(
@@ -68,5 +69,20 @@ export default class Child extends THREE.Group {
 
         body.add(head,leftLeg,rightLeg,leftHand,rightHand)
         this.add(body)
+
+        this.earLeft = leftPivot
+        this.earRight = rightPivot
+    }
+    update(){
+        const now = performance.now() / 1000;
+        const oscillationDuration = 3;
+        const totalCycle = oscillationDuration;
+        const amplitude = Math.PI / 32;
+
+        const t = now % totalCycle;            // 0..10, repeats
+
+        const phase = (t / oscillationDuration) * 2 * Math.PI;
+        this.earLeft.rotation.z = (amplitude * Math.sin(phase)) - Math.PI/2;
+        this.earRight.rotation.z = (amplitude * -Math.sin(phase)) - Math.PI/2;
     }
  }
