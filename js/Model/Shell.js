@@ -3,6 +3,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { CSG } from 'three-csg-ts';
 
 import Button from './Button.js';
+import Tamagoshi from './Tamagoshi.js';
 
 export default class Shell extends THREE.Group{
     constructor() {
@@ -51,12 +52,18 @@ export default class Shell extends THREE.Group{
         this.buttonRight.scale.set(0.5, 0.5, 0.5);        
         this.buttons = [this.buttonLeft,this.buttonMid,this.buttonRight]
         this.buttons.forEach(button => this.add(button))
+
+        this.pet = new Tamagoshi()
+        this.pet.position.y = -0.85
+        this.pet.position.z = -0.6
+        this.add(this.pet)
     }
 
     update() {
         this.buttons.forEach(button => {
             button.update?.()
         });
-        //this.rotation.y += 0.01; // Test update
+        this.pet.update?.()
+        //this.rotation.y += 0.01;
     }
 }

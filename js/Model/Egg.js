@@ -1,0 +1,43 @@
+import * as THREE from 'three';
+
+export default class Egg extends THREE.Group {
+    constructor(){
+        super();
+        
+        const curve = new THREE.CubicBezierCurve(
+            new THREE.Vector2(0.0, 0.0),   // baixom
+            new THREE.Vector2(0.6, 0.1),   // ovo baix
+            new THREE.Vector2(0.4, 0.9),   // lado top
+            new THREE.Vector2(0.0, 1.0)    // topo
+        );
+
+        const points = curve.getPoints(30);
+
+        const geometry = new THREE.LatheGeometry(points, 64);
+        const material = new THREE.MeshNormalMaterial();
+
+        const egg = new THREE.Mesh(geometry, material);
+
+        this.add(egg);
+        this.switch = true
+        this.bounces = 0
+    }
+    update() {
+        const now = performance.now() / 1000;
+        const oscillationDuration = 3;
+        const pauseDuration = 5;
+        const totalCycle = oscillationDuration + pauseDuration;
+        const bouncesPerCycle = 3;
+        const amplitude = Math.PI / 12;
+
+        const t = now % totalCycle;            // 0..10, repeats
+
+        // Oscilate then wait and reset
+        if (t < oscillationDuration) {
+            const phase = (t / oscillationDuration) * 2 * Math.PI * bouncesPerCycle;
+            this.rotation.z = amplitude * Math.sin(phase);
+        } else {
+            this.rotation.z = 0; // pause, no rotation
+        }
+    }
+}
