@@ -8,18 +8,54 @@ export default class App{
         this.camera.position.z = 5;
 
         this.renderer = new THREE.WebGLRenderer();
-        document.body.appendChild(this.renderer.domElement);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-
+        document.body.appendChild(this.renderer.domElement);
+        
         const controls = new OrbitControls(this.camera, this.renderer.domElement);
 
+        // interactive buttons collected from added objects
+        this.interactiveButtons = [];
+        this.raycaster = new THREE.Raycaster();
+        this.pointer = new THREE.Vector2();
+
         this.objects = [];
+
+        // ! Improve Sintax
+        const canvas = this.renderer.domElement;
+        canvas.addEventListener('pointerdown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            this.pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            this.pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            this.raycaster.setFromCamera(this.pointer, this.camera);
+
+            const targets = this.interactiveButtons.map(b => b.button).filter(Boolean);
+            const intersects = this.raycaster.intersectObjects(targets, true);
+            if (intersects.length) {
+                const hit = intersects[0].object;
+                const btn = this.interactiveButtons.find(b => {
+                    let obj = hit;
+                    while (obj) {
+                        if (obj === b.button) return true;
+                        obj = obj.parent;
+                    }
+                    return false;
+                });
+                if (btn) btn.setPressed(true);
+            }
+        });
+
+        window.addEventListener('pointerup', () => {
+            this.interactiveButtons.forEach(b => b.setPressed(false));
+        });
 
         this.animate();
     }
 
     add(object) {
         this.scene.add(object);
+        if(object.buttons) {
+            this.interactiveButtons.push(...object.buttons)
+        }
         this.objects.push(object);
     }
 
