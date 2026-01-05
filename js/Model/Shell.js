@@ -4,6 +4,7 @@ import { CSG } from 'three-csg-ts';
 
 import Button from './Button.js';
 import Tamagoshi from './Tamagoshi.js';
+import Egg from './Egg.js';
 
 export default class Shell extends THREE.Group{
     constructor() {

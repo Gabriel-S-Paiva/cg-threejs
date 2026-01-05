@@ -46,8 +46,20 @@ export default class Child extends THREE.Group {
         )
         const headPoints = headCurve.getPoints(30)
         const headGeometry = new THREE.LatheGeometry(headPoints, 24)
+
+        const texture = new THREE.TextureLoader().load('../../assets/gemini.png',()=> {
+            texture.colorSpace = THREE.SRGBColorSpace;
+        })
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+
+        texture.repeat.set(1,1)
+        texture.offset.set(0.78,0)
+        texture.rotation = Math.PI
+
         const headMaterial = new THREE.MeshToonMaterial({
-            color: '#FFFFA7'
+            color: '#FFFFA7',
+            map: texture,
         });
         const head = new THREE.Mesh(headGeometry,headMaterial);
         head.rotation.z = Math.PI/2

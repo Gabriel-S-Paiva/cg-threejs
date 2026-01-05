@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 
 export default class Button extends THREE.Group {
-    constructor() {
+    constructor(action = null) {
         super();
+
+        // Hearitage Behavior
+        this.action = action
 
         const ringGeometry = new THREE.TorusGeometry(0.5, 0.05);
         const ringMaterial = new THREE.MeshPhysicalMaterial({
@@ -13,7 +16,7 @@ export default class Button extends THREE.Group {
 
         const buttonGeometry = new THREE.TorusGeometry(0.4, 0.05);
         const buttonMaterial = new THREE.MeshPhysicalMaterial({
-            color:'#F00',
+            color:'rgba(246, 56, 13, 0.72)',
         });
         const button = new THREE.Mesh(buttonGeometry, buttonMaterial);
         button.position.z = 0.18;
@@ -37,6 +40,9 @@ export default class Button extends THREE.Group {
     }
 
     setPressed(state) {
+        if(state && !this.pressed) {
+            this.action?.()
+        }
         this.pressed = !!state;
     }
 
