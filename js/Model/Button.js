@@ -5,23 +5,26 @@ export default class Button extends THREE.Group {
         super();
 
         const ringGeometry = new THREE.TorusGeometry(0.5, 0.05);
-        const ringMaterial = new THREE.MeshNormalMaterial();
+        const ringMaterial = new THREE.MeshPhysicalMaterial({
+            transmission: 0,
+            color: 'rgba(144, 82, 7, 1)'
+        });
         const ring = new THREE.Mesh(ringGeometry, ringMaterial);
 
         const buttonGeometry = new THREE.TorusGeometry(0.4, 0.05);
-        const buttonMaterial = new THREE.MeshNormalMaterial();
+        const buttonMaterial = new THREE.MeshPhysicalMaterial({
+            color:'#F00',
+        });
         const button = new THREE.Mesh(buttonGeometry, buttonMaterial);
         button.position.z = 0.18;
 
         const coverGeometry = new THREE.CircleGeometry(0.4);
-        const coverMaterial = new THREE.MeshNormalMaterial();
-        const cover = new THREE.Mesh(coverGeometry, coverMaterial);
+        const cover = new THREE.Mesh(coverGeometry, buttonMaterial);
         cover.position.z = 0.05;
         button.add(cover);
 
         const bodyGeometry = new THREE.CylinderGeometry(0.45, 0.45, 0.2);
-        const bodyMaterial = new THREE.MeshNormalMaterial();
-        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        const body = new THREE.Mesh(bodyGeometry, buttonMaterial);
         body.rotation.x = Math.PI / 2;
         body.position.z = -0.1;
         button.add(body);

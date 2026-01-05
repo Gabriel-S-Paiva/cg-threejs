@@ -5,16 +5,20 @@ export default class Egg extends THREE.Group {
         super();
         
         const curve = new THREE.CubicBezierCurve(
-            new THREE.Vector2(0.0, 0.0),   // baixom
-            new THREE.Vector2(0.6, 0.1),   // ovo baix
-            new THREE.Vector2(0.4, 0.9),   // lado top
-            new THREE.Vector2(0.0, 1.0)    // topo
+            new THREE.Vector2(0.0, 0.0),
+            new THREE.Vector2(0.6, 0.1),
+            new THREE.Vector2(0.4, 0.9),
+            new THREE.Vector2(0.0, 1.0)
         );
 
         const points = curve.getPoints(30);
-
-        const geometry = new THREE.LatheGeometry(points, 64);
-        const material = new THREE.MeshNormalMaterial();
+        const geometry = new THREE.LatheGeometry(
+            points, 
+            64
+        );
+        const material = new THREE.MeshToonMaterial({
+            color: '#FFEFC1',
+        });
 
         const egg = new THREE.Mesh(geometry, material);
 
@@ -30,7 +34,7 @@ export default class Egg extends THREE.Group {
         const bouncesPerCycle = 3;
         const amplitude = Math.PI / 12;
 
-        const t = now % totalCycle;            // 0..10, repeats
+        const t = now % totalCycle;
 
         // Oscilate then wait and reset
         if (t < oscillationDuration) {

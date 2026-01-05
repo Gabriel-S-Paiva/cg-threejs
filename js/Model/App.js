@@ -13,6 +13,15 @@ export default class App{
         
         const controls = new OrbitControls(this.camera, this.renderer.domElement);
 
+        // Lights
+        const ambient = new THREE.AmbientLight()
+        this.scene.add(ambient)
+
+        const direction = new THREE.DirectionalLight()
+        direction.position.set(0,-1,6)
+        direction.castShadow = true;
+        this.scene.add(direction)
+
         // interactive buttons collected from added objects
         this.interactiveButtons = [];
         this.raycaster = new THREE.Raycaster();

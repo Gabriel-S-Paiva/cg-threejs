@@ -29,7 +29,11 @@ export default class Shell extends THREE.Group{
         const resultCSG = csgOuter.subtract(csgInner);
 
         // Create the final mesh
-        const material = new THREE.MeshNormalMaterial();
+        const texture = new THREE.TextureLoader().load('../../assets/cardboard.avif')
+        const material = new THREE.MeshToonMaterial({
+            color:'#ffba4a',
+            map: texture
+        });
         const shellMesh = CSG.toMesh(resultCSG, outerMesh.matrix, material);
 
         this.add(shellMesh); // Add the resulting mesh to the group

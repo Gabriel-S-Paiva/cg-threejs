@@ -2,18 +2,34 @@ import * as THREE from 'three';
 export default class Child extends THREE.Group {
     constructor() {
         super();
-        const helper = new THREE.AxesHelper(3)
 
-        const earGeometry = new THREE.CapsuleGeometry(1,1,8,24)
-        const earMaterial = new THREE.MeshNormalMaterial();
-        const earLeft = new THREE.Mesh(earGeometry,earMaterial);
+        const earGeometry = new THREE.CapsuleGeometry(
+            1,
+            1,
+            8,
+            24
+        )
+        const earMaterial = new THREE.MeshToonMaterial({
+            color:'#000'
+        });
+
+        // Left Ear
+        const earLeft = new THREE.Mesh(
+            earGeometry,
+            earMaterial
+        );
         earLeft.scale.set(0.75,1,0.7)
         const leftPivot = new THREE.Object3D()
         leftPivot.rotation.z = -Math.PI/2
         leftPivot.position.y = 1
         earLeft.position.y = 1.5
         leftPivot.add(earLeft)
-        const earRight = new THREE.Mesh(earGeometry,earMaterial);
+
+        // Right Ear
+        const earRight = new THREE.Mesh(
+            earGeometry,
+            earMaterial
+        );
         earRight.scale.set(0.75,1,0.7)
         const rightPivot = new THREE.Object3D()
         rightPivot.rotateZ(-Math.PI/2)
@@ -21,6 +37,7 @@ export default class Child extends THREE.Group {
         earRight.position.y = 1.5
         rightPivot.add(earRight)
 
+        // Head
         const headCurve = new THREE.CubicBezierCurve(
             new THREE.Vector2( 0, 0),
             new THREE.Vector2( 2, 0),
@@ -28,9 +45,10 @@ export default class Child extends THREE.Group {
             new THREE.Vector2( 0, 4)
         )
         const headPoints = headCurve.getPoints(30)
-
         const headGeometry = new THREE.LatheGeometry(headPoints, 24)
-        const headMaterial = new THREE.MeshNormalMaterial();
+        const headMaterial = new THREE.MeshToonMaterial({
+            color: '#FFFFA7'
+        });
         const head = new THREE.Mesh(headGeometry,headMaterial);
         head.rotation.z = Math.PI/2
         head.position.x =2
@@ -45,10 +63,14 @@ export default class Child extends THREE.Group {
         )
         const bodyPoints = bodyCurve.getPoints(30)
         const bodyGeometry = new THREE.LatheGeometry(bodyPoints, 24)
-        const bodyMaterial = new THREE.MeshNormalMaterial();
+        const bodyMaterial = new THREE.MeshToonMaterial({
+            color: '#FFFFA7'
+        });
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
 
-        const legMaterial = new THREE.MeshNormalMaterial();
+        const legMaterial = new THREE.MeshToonMaterial({
+            color:'#FFFFA7'
+        });
         const leftLeg = new THREE.Mesh(bodyGeometry,legMaterial)
         leftLeg.scale.set(0.4,0.4,0.4)
         leftLeg.position.y = -0.5
@@ -59,7 +81,9 @@ export default class Child extends THREE.Group {
         rightLeg.position.x = -0.8
 
         const handGeometry = new THREE.SphereGeometry(0.5)
-        const handMaterial = new THREE.MeshNormalMaterial()
+        const handMaterial = new THREE.MeshToonMaterial({
+            color:'#FFFFA7'
+        })
         const leftHand = new THREE.Mesh(handGeometry,handMaterial)
         leftHand.position.y = 2
         leftHand.position.x = 2
