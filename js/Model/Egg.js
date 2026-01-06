@@ -24,6 +24,9 @@ export default class Egg extends THREE.Group {
         });
 
         const egg = new THREE.Mesh(geometry, material);
+        // enable shadows for the egg mesh
+        egg.castShadow = true;
+        egg.receiveShadow = true;
 
         this.add(egg);
         this.switch = true

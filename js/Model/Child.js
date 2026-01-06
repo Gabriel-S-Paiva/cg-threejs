@@ -9,7 +9,7 @@ export default class Child extends THREE.Group {
             8,
             24
         )
-        const earMaterial = new THREE.MeshToonMaterial({
+        const earMaterial = new THREE.MeshPhysicalMaterial({
             color:'#000'
         });
 
@@ -57,7 +57,7 @@ export default class Child extends THREE.Group {
         texture.offset.set(0.78,0)
         texture.rotation = Math.PI
 
-        const headMaterial = new THREE.MeshToonMaterial({
+        const headMaterial = new THREE.MeshPhysicalMaterial({
             color: '#FFFFA7',
             map: texture,
         });
@@ -75,12 +75,12 @@ export default class Child extends THREE.Group {
         )
         const bodyPoints = bodyCurve.getPoints(30)
         const bodyGeometry = new THREE.LatheGeometry(bodyPoints, 24)
-        const bodyMaterial = new THREE.MeshToonMaterial({
+        const bodyMaterial = new THREE.MeshPhysicalMaterial({
             color: '#FFFFA7'
         });
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
 
-        const legMaterial = new THREE.MeshToonMaterial({
+        const legMaterial = new THREE.MeshPhysicalMaterial({
             color:'#FFFFA7'
         });
         const leftLeg = new THREE.Mesh(bodyGeometry,legMaterial)
@@ -93,7 +93,7 @@ export default class Child extends THREE.Group {
         rightLeg.position.x = -0.8
 
         const handGeometry = new THREE.SphereGeometry(0.5)
-        const handMaterial = new THREE.MeshToonMaterial({
+        const handMaterial = new THREE.MeshPhysicalMaterial({
             color:'#FFFFA7'
         })
         const leftHand = new THREE.Mesh(handGeometry,handMaterial)
@@ -104,6 +104,15 @@ export default class Child extends THREE.Group {
         rightHand.position.x = -2
 
         body.add(head,leftLeg,rightLeg,leftHand,rightHand)
+
+        // ensure every mesh in the body subtree casts and receives shadows
+        body.traverse((c) => {
+            if (c.isMesh) {
+                c.castShadow = true;
+                c.receiveShadow = true;
+            }
+        });
+
         this.add(body)
 
         this.earLeft = leftPivot

@@ -7,8 +7,11 @@ export default class App{
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
         this.camera.position.z = 5;
 
-        this.renderer = new THREE.WebGLRenderer();
+        this.renderer = new THREE.WebGLRenderer({antialias: true});
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+        // enable shadow maps
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(this.renderer.domElement);
         
         const controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -17,10 +20,20 @@ export default class App{
         const ambient = new THREE.AmbientLight()
         this.scene.add(ambient)
 
-        const direction = new THREE.DirectionalLight()
-        direction.position.set(0,-1,6)
+        const direction = new THREE.DirectionalLight(0xffffff, 1);
+        direction.position.set(5, 5, 5);
         direction.castShadow = true;
-        this.scene.add(direction)
+        // improve shadow quality and bounds
+        direction.shadow.mapSize.set(2048, 2048);
+        direction.shadow.camera.left = -10;
+        direction.shadow.camera.right = 10;
+        direction.shadow.camera.top = 10;
+        direction.shadow.camera.bottom = -10;
+        direction.shadow.camera.near = 0.5;
+        direction.shadow.camera.far = 50;
+        // reduce shadow acne / z-fighting
+        direction.shadow.bias = -0.0005;
+        this.scene.add(direction);
 
         // interactive buttons collected from added objects
         this.interactiveButtons = [];
