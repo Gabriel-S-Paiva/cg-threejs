@@ -126,9 +126,21 @@ export default class Child extends THREE.Group {
         this.animPhase = 0;
         this.jumpCount = 0;
         this.maxJumps = 5;
+        
+        // Physics and ragdoll state
+        this.physicsWorld = null;
+        this.rigidBodies = [];
+        this.isRagdoll = false;
+        this.ragdollTimeout = null;
+    }
+
+    setPhysicsWorld(world) {
+        this.physicsWorld = world;
     }
 
     setState(newState) {
+        if (this.isRagdoll) return; // Can't change state during ragdoll
+        
         if (this.state !== newState) {
             this.state = newState;
             this.stateTime = 0;
@@ -145,6 +157,95 @@ export default class Child extends THREE.Group {
             } else if (newState === 'sleeping') {
                 this.currentPosition.set(0, 0, 0);
             }
+        }
+    }
+
+    enterRagdoll() {
+        if (this.isRagdoll || !this.physicsWorld) return;
+        
+        this.isRagdoll = true;
+        this.previousState = this.state;
+        this.state = 'ragdoll';
+        
+        // Clear any existing timeout
+        if (this.ragdollTimeout) clearTimeout(this.ragdollTimeout);
+        
+        // Create physics bodies for body parts
+        this.createRagdollBodies();
+        
+        // Exit ragdoll after 3 seconds
+        this.ragdollTimeout = setTimeout(() => this.exitRagdoll(), 3000);
+    }
+
+    exitRagdoll() {
+        this.isRagdoll = false;
+        this.cleanupRagdollBodies();
+        this.setState('idle');
+    }
+
+    createRagdollBodies() {
+        if (!this.physicsWorld) return;
+        
+        const RAPIER = this.physicsWorld.constructor;
+        const scale = 0.2; // Character scale
+        
+        // Body
+        const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
+            .setTranslation(
+                this.position.x,
+                this.position.y,
+                this.position.z
+            )
+            .setLinearDamping(2.0)
+            .setAngularDamping(2.0);
+        this.bodyRigidBody = this.physicsWorld.createRigidBody(bodyDesc);
+        
+        const bodyCollider = RAPIER.ColliderDesc.ball(0.3 * scale)
+            .setRestitution(0.3)
+            .setFriction(0.5);
+        this.physicsWorld.createCollider(bodyCollider, this.bodyRigidBody);
+        
+        // Apply random impulse
+        const impulse = {
+            x: (Math.random() - 0.5) * 2,
+            y: Math.random() * 1,
+            z: (Math.random() - 0.5) * 2
+        };
+        this.bodyRigidBody.applyImpulse(impulse, true);
+        
+        this.rigidBodies.push(this.bodyRigidBody);
+    }
+
+    cleanupRagdollBodies() {
+        if (!this.physicsWorld) return;
+        
+        this.rigidBodies.forEach(rb => {
+            if (rb && this.physicsWorld.bodies.contains(rb.handle)) {
+                this.physicsWorld.removeRigidBody(rb);
+            }
+        });
+        this.rigidBodies = [];
+        this.bodyRigidBody = null;
+    }
+
+    updateRagdoll() {
+        if (!this.bodyRigidBody) return;
+        
+        const pos = this.bodyRigidBody.translation();
+        const rot = this.bodyRigidBody.rotation();
+        
+        this.position.set(pos.x, pos.y, pos.z);
+        this.body.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+        
+        // Bounds checking - keep within shell
+        const bounds = { x: 0.6, y: 0.4, z: 0.25 };
+        if (Math.abs(pos.x) > bounds.x || Math.abs(pos.y) > bounds.y || Math.abs(pos.z) > bounds.z) {
+            // Bounce back
+            const vel = this.bodyRigidBody.linvel();
+            this.bodyRigidBody.setLinvel(
+                { x: -vel.x * 0.5, y: -vel.y * 0.5, z: -vel.z * 0.5 },
+                true
+            );
         }
     }
 
@@ -210,25 +311,25 @@ export default class Child extends THREE.Group {
         if (t < 0.3) {
             // Reach back
             const reachT = t / 0.3;
-            this.rightHand.position.set(-2, 2, -1 * reachT);
+            this.rightHand.position.set(-2, 2, 1 * reachT);
         } else if (t < 0.6) {
-            // Bring to mouth
+            // Bring to mouth (front of head, not back)
             const bringT = (t - 0.3) / 0.3;
             this.rightHand.position.set(
-                -2 + 2 * bringT,
+                -2 + 4 * bringT,
                 2 + 2 * bringT,
-                -1 + 1 * bringT
+                1 - 1 * bringT
             );
         } else if (t < 0.8) {
-            // Eating motion (at mouth)
+            // Eating motion (at front of mouth)
             const eatT = (t - 0.6) / 0.2;
-            this.rightHand.position.set(0, 4, 0);
+            this.rightHand.position.set(2, 4, 0);
             this.rightHand.rotation.z = Math.sin(eatT * Math.PI * 4) * 0.2;
         } else {
             // Return to neutral
             const returnT = (t - 0.8) / 0.2;
             this.rightHand.position.set(
-                0 - 2 * returnT,
+                2 - 4 * returnT,
                 4 - 2 * returnT,
                 0
             );
@@ -340,6 +441,11 @@ export default class Child extends THREE.Group {
         const dt = now - this.lastTime;
         this.lastTime = now;
         this.stateTime += dt;
+
+        if (this.isRagdoll) {
+            this.updateRagdoll();
+            return;
+        }
 
         switch (this.state) {
             case 'idle':

@@ -9,7 +9,8 @@ export default class Tamagoshi extends THREE.Group {
         this.egg = new Egg()
         this.child = new Child()
         this.child.scale.set(0.2,0.2,0.2)
-        this.child.position.y = 0.075
+        // Position child at same location as egg (centered in box)
+        this.child.position.set(0, -0.85, -0.6)
         this.current_object = this.egg
         this.timer = 0;
 

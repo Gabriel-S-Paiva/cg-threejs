@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/Gabriel-S-Paiva/cg-threejs#readme",
   "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.19.3",
     "three": "^0.182.0",
     "three-csg-ts": "^3.2.0"
   },
