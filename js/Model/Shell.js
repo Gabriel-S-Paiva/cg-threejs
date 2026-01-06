@@ -56,18 +56,36 @@ export default class Shell extends THREE.Group{
         this.buttonLeft.position.z = 0.5
         this.buttonLeft.position.y = -1.42
         this.buttonLeft.position.x = -0.8
-        this.buttonLeft.scale.set(0.5, 0.5, 0.5); 
+        this.buttonLeft.scale.set(0.5, 0.5, 0.5);
+        this.buttonLeft.onPress = () => {
+            // Left button triggers eating
+            if (this.pet.current_object && this.pet.current_object.setState) {
+                this.pet.current_object.setState('eating');
+            }
+        };
 
         this.buttonMid = new Button();
         this.buttonMid.position.z = 0.5
         this.buttonMid.position.y = -1.42
-        this.buttonMid.scale.set(0.5, 0.5, 0.5); 
+        this.buttonMid.scale.set(0.5, 0.5, 0.5);
+        this.buttonMid.onPress = () => {
+            // Middle button triggers playing
+            if (this.pet.current_object && this.pet.current_object.setState) {
+                this.pet.current_object.setState('playing');
+            }
+        };
 
         this.buttonRight = new Button();
         this.buttonRight.position.z = 0.5
         this.buttonRight.position.y = -1.42
         this.buttonRight.position.x = 0.8
-        this.buttonRight.scale.set(0.5, 0.5, 0.5);        
+        this.buttonRight.scale.set(0.5, 0.5, 0.5);
+        this.buttonRight.onPress = () => {
+            // Right button triggers sleeping
+            if (this.pet.current_object && this.pet.current_object.setState) {
+                this.pet.current_object.setState('sleeping');
+            }
+        };        
         this.buttons = [this.buttonLeft,this.buttonMid,this.buttonRight]
         this.buttons.forEach(button => {
             this.add(button)

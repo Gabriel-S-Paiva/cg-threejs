@@ -42,6 +42,7 @@ export default class Button extends THREE.Group {
     setPressed(state) {
         if(state && !this.pressed) {
             this.action?.()
+            this.onPress?.()
         }
         this.pressed = !!state;
     }
