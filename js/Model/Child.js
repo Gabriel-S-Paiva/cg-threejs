@@ -215,7 +215,7 @@ export default class Child extends THREE.Group {
         this.createRagdollBodies();
         
         // Exit ragdoll after 3 seconds
-        this.ragdollTimeout = setTimeout(() => this.exitRagdoll(), 3000);
+        this.ragdollTimeout = setTimeout(() => this.exitRagdoll(), 5000);
     }
 
     exitRagdoll() {
@@ -438,22 +438,22 @@ export default class Child extends THREE.Group {
             // Bring to mouth (front of head, not back)
             const bringT = (t - 0.3) / 0.3;
             this.rightHand.position.set(
-                -2 + 4 * bringT,
-                2 + 2 * bringT,
-                1 - 1 * bringT
+                -2 + 2 * bringT,
+                2 + 1 * bringT,
+                2 - 0.3 * bringT
             );
         } else if (t < 0.8) {
             // Eating motion (at front of mouth)
             const eatT = (t - 0.6) / 0.2;
-            this.rightHand.position.set(2, 4, 0);
+            this.rightHand.position.set(0, 3, 2.3);
             this.rightHand.rotation.z = Math.sin(eatT * Math.PI * 4) * 0.2;
         } else {
             // Return to neutral
             const returnT = (t - 0.8) / 0.2;
             this.rightHand.position.set(
-                2 - 4 * returnT,
-                4 - 2 * returnT,
-                0
+                0 - 2 * returnT,
+                3 - 1 * returnT,
+                1 - 0.3 * returnT
             );
         }
 
