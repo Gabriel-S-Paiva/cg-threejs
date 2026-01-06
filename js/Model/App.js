@@ -115,6 +115,7 @@ export default class App{
                 const avgVelocity = recentVelocities.reduce((sum, v) => sum + v.velocity, 0) / 5;
                 
                 if (avgVelocity > 3) { // Shake threshold
+                    console.log('[App] Mouse shake detected! Average velocity:', avgVelocity);
                     this.onShake();
                     this.mouseMoveHistory = []; // Reset to avoid multiple triggers
                 }
@@ -150,22 +151,45 @@ export default class App{
         // Keyboard shake trigger for testing (press 'S' key)
         window.addEventListener('keydown', (e) => {
             if (e.key === 's' || e.key === 'S') {
+                console.log('[App] S key pressed - triggering shake');
                 this.onShake();
             }
+        });
+        
+        // Window resize handler for responsiveness
+        window.addEventListener('resize', () => {
+            console.log('[App] Window resized');
+            this.camera.aspect = window.innerWidth / window.innerHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
         this.animate();
     }
 
     async initPhysics() {
+        console.log('[App] Initializing physics...');
         await RAPIER.init();
         this.physicsWorld = new RAPIER.World({ x: 0.0, y: -9.81, z: 0.0 });
+        console.log('[App] Physics world created:', this.physicsWorld);
+        
+        // Update all existing objects with physics world
+        this.objects.forEach(object => {
+            if (object.setPhysicsWorld) {
+                console.log('[App] Setting physics world on existing object');
+                object.setPhysicsWorld(this.physicsWorld);
+            }
+        });
     }
 
     onShake() {
+        console.log('[App] Shake detected! Triggering ragdoll on pets...');
         this.objects.forEach(obj => {
             if (obj.pet && obj.pet.current_object && obj.pet.current_object.enterRagdoll) {
+                console.log('[App] Calling enterRagdoll on pet');
                 obj.pet.current_object.enterRagdoll();
+            } else {
+                console.log('[App] Object does not have enterRagdoll method', obj);
             }
         });
     }
@@ -179,6 +203,10 @@ export default class App{
         // Pass physics world to objects that need it
         if (object.setPhysicsWorld && this.physicsWorld) {
             object.setPhysicsWorld(this.physicsWorld);
+        }
+        // Pass camera reference to objects that need it
+        if (object.setCamera && this.camera) {
+            object.setCamera(this.camera);
         }
     }
 
