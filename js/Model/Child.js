@@ -16,10 +16,8 @@ export default class Child extends THREE.Group {
         this.movementSpeed = 0.5;
         this.nextMoveTime = Math.random() * 3 + 2;
         
-        // Box bounds for random movement (shell interior is approximately 2.6x2.6x3)
-        // Keep character within bounds considering its scale (0.2)
-        // Only move in X and Z axis, not Y
-        this.bounds = { x: 1, y: 0, z: 0.15 };
+        // Initial position to ensure clean spawn
+        this.position.set(0, 0, 0);
         
         // Camera and looking behavior
         this.camera = null;
@@ -163,21 +161,30 @@ export default class Child extends THREE.Group {
         
         if (this.state !== newState) {
             console.log(`[Child] State change: ${this.state} -> ${newState}`);
+            
+            // Reset body rotation when leaving sleeping state
+            if (this.state === 'sleeping') {
+                this.body.rotation.set(0, 0, 0);
+                this.body.position.y = 0;
+                // Reset limb positions
+                this.leftLeg.rotation.x = 0;
+                this.rightLeg.rotation.x = 0;
+                this.leftHand.position.y = 2;
+                this.rightHand.position.y = 2;
+                this.leftHand.rotation.z = 0;
+                this.rightHand.rotation.z = 0;
+            }
+            
             this.state = newState;
             this.stateTime = 0;
             this.animPhase = 0;
             this.isLookingAtCamera = false; // Reset camera look when changing state
             
+            // Only reset position/rotation when explicitly needed, NOT for idle
             if (newState === 'idle') {
                 this.body.rotation.set(0, 0, 0);
                 this.body.position.y = 0;
-            } else if (newState === 'eating') {
-                this.currentPosition.set(0, 0, 0);
-            } else if (newState === 'playing') {
-                this.jumpCount = 0;
-                this.currentPosition.set(0, 0, 0);
-            } else if (newState === 'sleeping') {
-                this.currentPosition.set(0, 0, 0);
+                // DON'T reset this.position or this.currentPosition - keep character where they are
             }
         }
     }
@@ -225,6 +232,8 @@ export default class Child extends THREE.Group {
         }
         
         console.log('[Child] Creating ragdoll bodies');
+        console.log('[Child] Local position:', this.position);
+        console.log('[Child] Current position:', this.currentPosition);
         
         // Get world position for accurate placement
         const worldPos = new THREE.Vector3();
@@ -240,26 +249,26 @@ export default class Child extends THREE.Group {
                 worldPos.y,
                 worldPos.z
             )
-            .setLinearDamping(2.0)
-            .setAngularDamping(2.0);
+            .setLinearDamping(0.5)  // Reduced from 2.0 for more bouncing
+            .setAngularDamping(0.5); // Reduced from 2.0 for more spinning
         this.bodyRigidBody = this.physicsWorld.createRigidBody(bodyDesc);
         
         const bodyCollider = RAPIER.ColliderDesc.ball(0.3 * scale)
-            .setRestitution(0.3)
-            .setFriction(0.5);
+            .setRestitution(0.7)  // Increased from 0.3 for more bounce
+            .setFriction(0.3);     // Reduced from 0.5 for less sticking
         this.physicsWorld.createCollider(bodyCollider, this.bodyRigidBody);
         
-        // Apply random impulse
+        // Apply very gentle random impulse
         const impulse = {
-            x: (Math.random() - 0.5) * 2,
-            y: Math.random() * 1,
-            z: (Math.random() - 0.5) * 2
+            x: (Math.random() - 0.5) * 0.1,  // Very small horizontal force
+            y: Math.random() * 0.05,          // Very small upward force
+            z: (Math.random() - 0.5) * 0.1   // Very small depth force
         };
         console.log('[Child] Applying impulse:', impulse);
         this.bodyRigidBody.applyImpulse(impulse, true);
         
         this.rigidBodies.push(this.bodyRigidBody);
-        console.log('[Child] Ragdoll body created successfully');
+        console.log('[Child] Ragdoll body created successfully at world pos:', worldPos);
     }
 
     cleanupRagdollBodies() {
@@ -283,21 +292,32 @@ export default class Child extends THREE.Group {
     updateRagdoll() {
         if (!this.bodyRigidBody) return;
         
+        // Get physics body position, rotation, and velocity
         const pos = this.bodyRigidBody.translation();
         const rot = this.bodyRigidBody.rotation();
+        const vel = this.bodyRigidBody.linvel();
         
-        this.position.set(pos.x, pos.y, pos.z);
+        // Log every 30 frames to avoid spam
+        if (Math.random() < 0.033) {
+            console.log('[Child] Ragdoll pos:', pos, 'vel:', vel);
+        }
+        
+        // Convert physics position to local position
+        // We need to subtract parent's world position
+        const parentWorldPos = new THREE.Vector3();
+        this.parent.getWorldPosition(parentWorldPos);
+        
+        this.position.set(
+            pos.x - parentWorldPos.x,
+            pos.y - parentWorldPos.y,
+            pos.z - parentWorldPos.z
+        );
         this.body.quaternion.set(rot.x, rot.y, rot.z, rot.w);
         
-        // Physics walls handle containment now, but still check for extreme cases
-        const bounds = { x: 1.5, y: 1.5, z: 0.5 };
-        if (Math.abs(pos.x) > bounds.x || Math.abs(pos.y) > bounds.y || Math.abs(pos.z) > bounds.z) {
-            console.warn('[Child] Ragdoll exceeded safety bounds, resetting position');
-            // Reset to center if somehow escapes
-            this.bodyRigidBody.setTranslation({ x: 0, y: -0.85, z: -0.6 }, true);
-            this.bodyRigidBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
-            this.bodyRigidBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
-        }
+        // Update currentPosition to match so idle doesn't reset
+        this.currentPosition.copy(this.position);
+        
+        // Physics walls handle all containment - ragdoll will bounce off them naturally
     }
 
     updateIdle(now, dt) {
@@ -325,13 +345,17 @@ export default class Child extends THREE.Group {
         }
 
         // Random movement in box (but stop when looking at camera)
+        // Shell walls will naturally contain the character - no manual bounds needed
         if (!this.isLookingAtCamera) {
             this.nextMoveTime -= dt;
             if (this.nextMoveTime <= 0) {
+                // Random XZ movement within reasonable range (Y stays 0 for ground)
+                // Shell interior is ~2.4 units wide, character scale is 0.2
+                // Keep movement range smaller than walls for natural containment
                 this.targetPosition.set(
-                    (Math.random() - 0.5) * this.bounds.x * 2,
-                    (Math.random() - 0.5) * this.bounds.y * 2,
-                    (Math.random() - 0.5) * this.bounds.z * 2
+                    (Math.random() - 0.5) * 1.6,  // ±0.8 units in X
+                    0,                              // Stay on ground
+                    (Math.random() - 0.5) * 0.8    // ±0.4 units in Z
                 );
                 this.nextMoveTime = Math.random() * 3 + 2;
             }
@@ -339,6 +363,10 @@ export default class Child extends THREE.Group {
             // Smooth movement toward target
             const previousPosition = this.currentPosition.clone();
             this.currentPosition.lerp(this.targetPosition, dt * this.movementSpeed);
+            
+            // Keep Y at 0 (ground level) - no clamping needed for XZ, walls handle it
+            this.currentPosition.y = 0;
+            
             this.position.copy(this.currentPosition);
             
             // Calculate movement direction and rotate character to face it

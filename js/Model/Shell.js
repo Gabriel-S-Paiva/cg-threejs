@@ -157,62 +157,93 @@ export default class Shell extends THREE.Group{
         if (!this.physicsWorld) return;
         
         console.log('[Shell] Creating boundary walls for ragdoll containment');
+        console.log('[Shell] Shell world position:', this.position);
+        
+        // Get the shell's world position to offset walls correctly
+        const shellWorldPos = new THREE.Vector3();
+        this.getWorldPosition(shellWorldPos);
+        console.log('[Shell] Shell world position:', shellWorldPos);
         
         // Interior dimensions of the shell (2.6x2.6x3 inner box)
-        const width = 1.3;  // Half of 2.6
-        const height = 1.3; // Half of 2.6
-        const depth = 0.3;  // Depth from center to front
+        // Inner box center is at y: 0.45, z: -0.4 relative to shell
+        // Match exact inner box dimensions to contain character properly
+        const width = 1.3;   // Half of 2.6 (inner box width)
+        const height = 1.3;  // Half of 2.6 (inner box height)
+        const depth = 1.5;   // Half of 3 (inner box depth)
         const wallThickness = 0.05;
         
-        // Front wall (glass window) - offset by pet position
+        // Shell inner box is centered at y: 0.45, z: -0.4
+        // Pet is at y: -0.85, z: -0.6 relative to shell
+        // So effective center for containment is y: -0.4, z: -1.0 in world space
+        
+        const centerY = shellWorldPos.y + 0.45;  // Shell inner box Y center
+        const centerZ = shellWorldPos.z - 0.4;   // Shell inner box Z center
+        
+        // Front wall (glass window)
         const frontWallDesc = RAPIER.RigidBodyDesc.fixed()
-            .setTranslation(0, -0.4, 0.35); // Adjusted for pet offset
+            .setTranslation(shellWorldPos.x, centerY, centerZ + depth + wallThickness);
         const frontWallBody = this.physicsWorld.createRigidBody(frontWallDesc);
         const frontCollider = RAPIER.ColliderDesc.cuboid(width, height, wallThickness)
-            .setRestitution(0.3)
-            .setFriction(0.5);
+            .setRestitution(0.7)
+            .setFriction(0.2);
         this.physicsWorld.createCollider(frontCollider, frontWallBody);
         this.physicsColliders.push(frontWallBody);
+        console.log('[Shell] Front wall at:', shellWorldPos.x, centerY, centerZ + depth);
         
         // Back wall
         const backWallDesc = RAPIER.RigidBodyDesc.fixed()
-            .setTranslation(0, -0.4, -1.0); // Adjusted for pet offset
+            .setTranslation(shellWorldPos.x, centerY, centerZ - depth - wallThickness);
         const backWallBody = this.physicsWorld.createRigidBody(backWallDesc);
-        const backCollider = RAPIER.ColliderDesc.cuboid(width, height, wallThickness);
+        const backCollider = RAPIER.ColliderDesc.cuboid(width, height, wallThickness)
+            .setRestitution(0.7)
+            .setFriction(0.2);
         this.physicsWorld.createCollider(backCollider, backWallBody);
         this.physicsColliders.push(backWallBody);
+        console.log('[Shell] Back wall at:', shellWorldPos.x, centerY, centerZ - depth);
         
         // Left wall
         const leftWallDesc = RAPIER.RigidBodyDesc.fixed()
-            .setTranslation(-width, -0.4, -0.3);
+            .setTranslation(shellWorldPos.x - width - wallThickness, centerY, centerZ);
         const leftWallBody = this.physicsWorld.createRigidBody(leftWallDesc);
-        const leftCollider = RAPIER.ColliderDesc.cuboid(wallThickness, height, depth);
+        const leftCollider = RAPIER.ColliderDesc.cuboid(wallThickness, height, depth)
+            .setRestitution(0.7)
+            .setFriction(0.2);
         this.physicsWorld.createCollider(leftCollider, leftWallBody);
         this.physicsColliders.push(leftWallBody);
+        console.log('[Shell] Left wall at:', shellWorldPos.x - width, centerY, centerZ);
         
         // Right wall
         const rightWallDesc = RAPIER.RigidBodyDesc.fixed()
-            .setTranslation(width, -0.4, -0.3);
+            .setTranslation(shellWorldPos.x + width + wallThickness, centerY, centerZ);
         const rightWallBody = this.physicsWorld.createRigidBody(rightWallDesc);
-        const rightCollider = RAPIER.ColliderDesc.cuboid(wallThickness, height, depth);
+        const rightCollider = RAPIER.ColliderDesc.cuboid(wallThickness, height, depth)
+            .setRestitution(0.7)
+            .setFriction(0.2);
         this.physicsWorld.createCollider(rightCollider, rightWallBody);
         this.physicsColliders.push(rightWallBody);
+        console.log('[Shell] Right wall at:', shellWorldPos.x + width, centerY, centerZ);
         
         // Top wall
         const topWallDesc = RAPIER.RigidBodyDesc.fixed()
-            .setTranslation(0, 0.9, -0.3);
+            .setTranslation(shellWorldPos.x, centerY + height + wallThickness, centerZ);
         const topWallBody = this.physicsWorld.createRigidBody(topWallDesc);
-        const topCollider = RAPIER.ColliderDesc.cuboid(width, wallThickness, depth);
+        const topCollider = RAPIER.ColliderDesc.cuboid(width, wallThickness, depth)
+            .setRestitution(0.7)
+            .setFriction(0.2);
         this.physicsWorld.createCollider(topCollider, topWallBody);
         this.physicsColliders.push(topWallBody);
+        console.log('[Shell] Top wall at:', shellWorldPos.x, centerY + height, centerZ);
         
         // Bottom wall
         const bottomWallDesc = RAPIER.RigidBodyDesc.fixed()
-            .setTranslation(0, -1.7, -0.3);
+            .setTranslation(shellWorldPos.x, centerY - height - wallThickness, centerZ);
         const bottomWallBody = this.physicsWorld.createRigidBody(bottomWallDesc);
-        const bottomCollider = RAPIER.ColliderDesc.cuboid(width, wallThickness, depth);
+        const bottomCollider = RAPIER.ColliderDesc.cuboid(width, wallThickness, depth)
+            .setRestitution(0.7)
+            .setFriction(0.2);
         this.physicsWorld.createCollider(bottomCollider, bottomWallBody);
         this.physicsColliders.push(bottomWallBody);
+        console.log('[Shell] Bottom wall at:', shellWorldPos.x, centerY - height, centerZ);
         
         console.log('[Shell] Created', this.physicsColliders.length, 'boundary walls');
     }
