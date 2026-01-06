@@ -240,7 +240,7 @@ export default class Child extends THREE.Group {
         this.getWorldPosition(worldPos);
         console.log('[Child] World position:', worldPos);
         
-        const scale = 0.2; // Character scale
+        const scale = 0.8; // Character scale (scaled 4x from 0.2)
         
         // Body
         const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
@@ -253,16 +253,16 @@ export default class Child extends THREE.Group {
             .setAngularDamping(0.5); // Reduced from 2.0 for more spinning
         this.bodyRigidBody = this.physicsWorld.createRigidBody(bodyDesc);
         
-        const bodyCollider = RAPIER.ColliderDesc.ball(0.3 * scale)
+        const bodyCollider = RAPIER.ColliderDesc.ball(0.25 * scale)
             .setRestitution(0.7)  // Increased from 0.3 for more bounce
             .setFriction(0.3);     // Reduced from 0.5 for less sticking
         this.physicsWorld.createCollider(bodyCollider, this.bodyRigidBody);
         
-        // Apply very gentle random impulse
+        // Apply moderate random impulse with stronger Y component
         const impulse = {
-            x: (Math.random() - 0.5) * 0.1,  // Very small horizontal force
-            y: Math.random() * 0.05,          // Very small upward force
-            z: (Math.random() - 0.5) * 0.1   // Very small depth force
+            x: (Math.random() - 0.5) * 0.4,  // Horizontal force (scaled 4x)
+            y: Math.random() * 0.5 + 0.2,    // Stronger upward force (scaled 10x+)
+            z: (Math.random() - 0.5) * 0.4   // Depth force (scaled 4x)
         };
         console.log('[Child] Applying impulse:', impulse);
         this.bodyRigidBody.applyImpulse(impulse, true);
@@ -350,12 +350,12 @@ export default class Child extends THREE.Group {
             this.nextMoveTime -= dt;
             if (this.nextMoveTime <= 0) {
                 // Random XZ movement within reasonable range (Y stays 0 for ground)
-                // Shell interior is ~2.4 units wide, character scale is 0.2
+                // Shell interior is ~9.6 units wide (scaled 4x), character scale is 0.8
                 // Keep movement range smaller than walls for natural containment
                 this.targetPosition.set(
-                    (Math.random() - 0.5) * 1.6,  // ±0.8 units in X
+                    (Math.random() - 0.5) * 6.4,  // ±3.2 units in X (scaled 4x)
                     0,                              // Stay on ground
-                    (Math.random() - 0.5) * 0.8    // ±0.4 units in Z
+                    (Math.random() - 0.5) * 3.2    // ±1.6 units in Z (scaled 4x)
                 );
                 this.nextMoveTime = Math.random() * 3 + 2;
             }

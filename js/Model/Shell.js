@@ -11,17 +11,17 @@ export default class Shell extends THREE.Group{
         // Calls parent constructor (creates a group)
         super();
 
-        // Create the outer geometry
-        const outerGeometry = new RoundedBoxGeometry(3, 4, 3, 3);
+        // Create the outer geometry (scaled 4x)
+        const outerGeometry = new RoundedBoxGeometry(12, 16, 12, 3);
         const outerMesh = new THREE.Mesh(outerGeometry);
-        outerMesh.position.z = -1;
+        outerMesh.position.z = -4;
         outerMesh.updateMatrix();
 
-        // Create the inner geometry
-        const innerGeometry = new RoundedBoxGeometry(2.6, 2.6, 3, 3);
+        // Create the inner geometry (scaled 4x)
+        const innerGeometry = new RoundedBoxGeometry(10.4, 10.4, 12, 3);
         const innerMesh = new THREE.Mesh(innerGeometry);
-        innerMesh.position.z = -0.4;
-        innerMesh.position.y = 0.45;
+        innerMesh.position.z = -1.6;
+        innerMesh.position.y = 1.8;
         innerMesh.updateMatrix();
 
         // Perform the subtraction (outer - inner)
@@ -52,8 +52,8 @@ export default class Shell extends THREE.Group{
 
         this.add(shellMesh);
         
-        // Add transparent glass window at the front
-        const windowGeometry = new RoundedBoxGeometry(2.55, 2.55, 0.05, 3);
+        // Add transparent glass window at the front (scaled 4x)
+        const windowGeometry = new RoundedBoxGeometry(10.2, 10.2, 0.2, 3);
         const windowMaterial = new THREE.MeshPhysicalMaterial({
             color: 0xffffff,
             transparent: true,
@@ -67,8 +67,8 @@ export default class Shell extends THREE.Group{
             clearcoatRoughness: 0.1
         });
         this.windowMesh = new THREE.Mesh(windowGeometry, windowMaterial);
-        this.windowMesh.position.z = 0.45;
-        this.windowMesh.position.y = 0.45;
+        this.windowMesh.position.z = 1.8;
+        this.windowMesh.position.y = 1.8;
         this.windowMesh.castShadow = false;
         this.windowMesh.receiveShadow = false;
         this.add(this.windowMesh);
@@ -77,10 +77,10 @@ export default class Shell extends THREE.Group{
         this.physicsColliders = [];
 
         this.buttonLeft = new Button();
-        this.buttonLeft.position.z = 0.5
-        this.buttonLeft.position.y = -1.42
-        this.buttonLeft.position.x = -0.8
-        this.buttonLeft.scale.set(0.5, 0.5, 0.5);
+        this.buttonLeft.position.z = 2.0
+        this.buttonLeft.position.y = -5.68
+        this.buttonLeft.position.x = -3.2
+        this.buttonLeft.scale.set(2.0, 2.0, 2.0);
         this.buttonLeft.onPress = () => {
             // If egg, hatch instantly; otherwise trigger eating
             if (this.pet.current_object === this.pet.egg) {
@@ -91,9 +91,9 @@ export default class Shell extends THREE.Group{
         };
 
         this.buttonMid = new Button();
-        this.buttonMid.position.z = 0.5
-        this.buttonMid.position.y = -1.42
-        this.buttonMid.scale.set(0.5, 0.5, 0.5);
+        this.buttonMid.position.z = 2.0
+        this.buttonMid.position.y = -5.68
+        this.buttonMid.scale.set(2.0, 2.0, 2.0);
         this.buttonMid.onPress = () => {
             // If egg, hatch instantly; otherwise trigger playing
             if (this.pet.current_object === this.pet.egg) {
@@ -104,10 +104,10 @@ export default class Shell extends THREE.Group{
         };
 
         this.buttonRight = new Button();
-        this.buttonRight.position.z = 0.5
-        this.buttonRight.position.y = -1.42
-        this.buttonRight.position.x = 0.8
-        this.buttonRight.scale.set(0.5, 0.5, 0.5);
+        this.buttonRight.position.z = 2.0
+        this.buttonRight.position.y = -5.68
+        this.buttonRight.position.x = 3.2
+        this.buttonRight.scale.set(2.0, 2.0, 2.0);
         this.buttonRight.onPress = () => {
             // If egg, hatch instantly; otherwise trigger sleeping
             if (this.pet.current_object === this.pet.egg) {
@@ -129,8 +129,8 @@ export default class Shell extends THREE.Group{
         })
 
         this.pet = new Tamagoshi()
-        this.pet.position.y = -0.85
-        this.pet.position.z = -0.6
+        this.pet.position.y = -3.4
+        this.pet.position.z = -2.4
         // ensure pet and its children cast/receive shadows
         this.pet.traverse((c) => {
             if (c.isMesh) {
@@ -164,20 +164,20 @@ export default class Shell extends THREE.Group{
         this.getWorldPosition(shellWorldPos);
         console.log('[Shell] Shell world position:', shellWorldPos);
         
-        // Interior dimensions of the shell (2.6x2.6x3 inner box)
-        // Inner box center is at y: 0.45, z: -0.4 relative to shell
+        // Interior dimensions of the shell (10.4x10.4x12 inner box, scaled 4x)
+        // Inner box center is at y: 1.8, z: -1.6 relative to shell
         // Match exact inner box dimensions to contain character properly
-        const width = 1.3;   // Half of 2.6 (inner box width)
-        const height = 1.3;  // Half of 2.6 (inner box height)
-        const depth = 1.5;   // Half of 3 (inner box depth)
-        const wallThickness = 0.05;
+        const width = 5.2;   // Half of 10.4 (inner box width, scaled 4x)
+        const height = 5.2;  // Half of 10.4 (inner box height, scaled 4x)
+        const depth = 6.0;   // Half of 12 (inner box depth, scaled 4x)
+        const wallThickness = 0.2;
         
-        // Shell inner box is centered at y: 0.45, z: -0.4
-        // Pet is at y: -0.85, z: -0.6 relative to shell
-        // So effective center for containment is y: -0.4, z: -1.0 in world space
+        // Shell inner box is centered at y: 1.8, z: -1.6 (scaled 4x)
+        // Pet is at y: -3.4, z: -2.4 relative to shell (scaled 4x)
+        // So effective center for containment is y: -1.6, z: -4.0 in world space
         
-        const centerY = shellWorldPos.y + 0.45;  // Shell inner box Y center
-        const centerZ = shellWorldPos.z - 0.4;   // Shell inner box Z center
+        const centerY = shellWorldPos.y + 1.8;  // Shell inner box Y center (scaled 4x)
+        const centerZ = shellWorldPos.z - 1.6;   // Shell inner box Z center (scaled 4x)
         
         // Front wall (glass window)
         const frontWallDesc = RAPIER.RigidBodyDesc.fixed()

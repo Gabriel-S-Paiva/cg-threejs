@@ -7,8 +7,9 @@ export default class Tamagoshi extends THREE.Group {
         super()
 
         this.egg = new Egg()
+        this.egg.scale.set(4.0, 4.0, 4.0)
         this.child = new Child()
-        this.child.scale.set(0.2,0.2,0.2)
+        this.child.scale.set(0.8,0.8,0.8)
         // DON'T set position here - keep at 0,0,0 relative to parent
         this.child.position.set(0, 0, 0)
         this.current_object = this.egg

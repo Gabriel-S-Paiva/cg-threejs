@@ -6,8 +6,8 @@ export default class App{
         this.scene = new THREE.Scene();
         this.physicsWorld = null;
         this.initPhysics();
-        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
-        this.camera.position.z = 5;
+        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 800);
+        this.camera.position.z = 20;
 
         this.renderer = new THREE.WebGLRenderer({antialias: true});
         this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -28,18 +28,19 @@ export default class App{
         this.scene.add(ambient)
 
         const direction = new THREE.DirectionalLight(0xffffff, 1);
-        direction.position.set(5, 5, 5);
+        direction.position.set(20, 20, 20);
         direction.castShadow = true;
-        // improve shadow quality and bounds
-        direction.shadow.mapSize.set(2048, 2048);
-        direction.shadow.camera.left = -10;
-        direction.shadow.camera.right = 10;
-        direction.shadow.camera.top = 10;
-        direction.shadow.camera.bottom = -10;
-        direction.shadow.camera.near = 0.5;
-        direction.shadow.camera.far = 50;
+        // improve shadow quality and bounds (scaled 4x)
+        direction.shadow.mapSize.set(4096, 4096);
+        direction.shadow.camera.left = -40;
+        direction.shadow.camera.right = 40;
+        direction.shadow.camera.top = 40;
+        direction.shadow.camera.bottom = -40;
+        direction.shadow.camera.near = 2.0;
+        direction.shadow.camera.far = 200;
         // reduce shadow acne / z-fighting
-        direction.shadow.bias = -0.0005;
+        direction.shadow.bias = -0.001;
+        direction.shadow.normalBias = 0.05;
         this.scene.add(direction);
 
         // interactive buttons collected from added objects
