@@ -16,8 +16,11 @@ export default class Egg extends THREE.Group {
             points, 
             64
         );
-        const material = new THREE.MeshToonMaterial({
-            color: '#FFEFC1',
+        const texture = new THREE.TextureLoader().load('../../assets/egg.png')
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        const material = new THREE.MeshPhysicalMaterial({
+            map: texture
         });
 
         const egg = new THREE.Mesh(geometry, material);

@@ -6,15 +6,27 @@ export default class Tamagoshi extends THREE.Group {
     constructor(){
         super()
 
-        const egg = new Egg()
-        const child = new Child()
-        child.scale.set(0.2,0.2,0.2)
-        child.position.y = 0.075
-        this.current_object = child
+        this.egg = new Egg()
+        this.child = new Child()
+        this.child.scale.set(0.2,0.2,0.2)
+        this.child.position.y = 0.075
+        this.current_object = this.egg
+        this.timer = 0;
 
-        this.add(child)
+        this.add(this.current_object)
     }
     update() {
-        this.current_object.update?.()
+        const threshold = 1000;
+        if (this.timer < threshold) {
+            this.timer++;
+        }
+
+        if (this.timer >= threshold && this.current_object !== this.child) {
+            this.remove(this.current_object);
+            this.current_object = this.child;
+            this.add(this.current_object);
+        }
+
+        this.current_object.update?.();
     }
 }

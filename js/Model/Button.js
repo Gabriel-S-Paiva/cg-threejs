@@ -10,13 +10,13 @@ export default class Button extends THREE.Group {
         const ringGeometry = new THREE.TorusGeometry(0.5, 0.05);
         const ringMaterial = new THREE.MeshPhysicalMaterial({
             transmission: 0,
-            color: 'rgba(144, 82, 7, 1)'
+            color: 'rgb(144, 82, 7)'
         });
         const ring = new THREE.Mesh(ringGeometry, ringMaterial);
 
         const buttonGeometry = new THREE.TorusGeometry(0.4, 0.05);
         const buttonMaterial = new THREE.MeshPhysicalMaterial({
-            color:'rgba(246, 56, 13, 0.72)',
+            color:'rgb(246, 56, 13)',
         });
         const button = new THREE.Mesh(buttonGeometry, buttonMaterial);
         button.position.z = 0.18;
