@@ -1,27 +1,27 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { CSG } from 'three-csg-ts';
+import RAPIER from '@dimforge/rapier3d-compat';
 
 import Button from './Button.js';
 import Tamagoshi from './Tamagoshi.js';
-import Egg from './Egg.js';
 
 export default class Shell extends THREE.Group{
     constructor() {
         // Calls parent constructor (creates a group)
         super();
 
-        // Create the outer geometry
-        const outerGeometry = new RoundedBoxGeometry(3, 4, 3, 3);
+        // Create the outer geometry (scaled 4x)
+        const outerGeometry = new RoundedBoxGeometry(12, 16, 12, 3);
         const outerMesh = new THREE.Mesh(outerGeometry);
-        outerMesh.position.z = -1;
+        outerMesh.position.z = -4;
         outerMesh.updateMatrix();
 
-        // Create the inner geometry
-        const innerGeometry = new RoundedBoxGeometry(2.6, 2.6, 3, 3);
+        // Create the inner geometry (scaled 4x)
+        const innerGeometry = new RoundedBoxGeometry(10.4, 10.4, 12, 3);
         const innerMesh = new THREE.Mesh(innerGeometry);
-        innerMesh.position.z = -0.4;
-        innerMesh.position.y = 0.45;
+        innerMesh.position.z = -1.6;
+        innerMesh.position.y = 1.8;
         innerMesh.updateMatrix();
 
         // Perform the subtraction (outer - inner)
@@ -31,7 +31,7 @@ export default class Shell extends THREE.Group{
 
         // Create the final mesh
         const texture = new THREE.TextureLoader().load('../../assets/cardboard.avif')
-        const material = new THREE.MeshToonMaterial({
+        const material = new THREE.MeshPhysicalMaterial({
             color:'#ffba4a',
             map: texture
         });
@@ -51,23 +51,71 @@ export default class Shell extends THREE.Group{
         shellMesh.receiveShadow = true;
 
         this.add(shellMesh);
+        
+        // Add transparent glass window at the front (scaled 4x)
+        const windowGeometry = new RoundedBoxGeometry(10.2, 10.2, 0.2, 3);
+        const windowMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.3,
+            metalness: 0.1,
+            roughness: 0.1,
+            transmission: 0.9,
+            thickness: 0.5,
+            envMapIntensity: 1,
+            clearcoat: 1,
+            clearcoatRoughness: 0.1
+        });
+        this.windowMesh = new THREE.Mesh(windowGeometry, windowMaterial);
+        this.windowMesh.position.z = 1.8;
+        this.windowMesh.position.y = 1.8;
+        this.windowMesh.castShadow = false;
+        this.windowMesh.receiveShadow = false;
+        this.add(this.windowMesh);
+        
+        // Store physics colliders for window bounds
+        this.physicsColliders = [];
 
         this.buttonLeft = new Button();
-        this.buttonLeft.position.z = 0.5
-        this.buttonLeft.position.y = -1.42
-        this.buttonLeft.position.x = -0.8
-        this.buttonLeft.scale.set(0.5, 0.5, 0.5); 
+        this.buttonLeft.position.z = 2.0
+        this.buttonLeft.position.y = -5.68
+        this.buttonLeft.position.x = -3.2
+        this.buttonLeft.scale.set(2.0, 2.0, 2.0);
+        this.buttonLeft.onPress = () => {
+            // If egg, hatch instantly; otherwise trigger eating
+            if (this.pet.current_object === this.pet.egg) {
+                this.pet.hatchNow();
+            } else if (this.pet.current_object && this.pet.current_object.setState) {
+                this.pet.current_object.setState('eating');
+            }
+        };
 
         this.buttonMid = new Button();
-        this.buttonMid.position.z = 0.5
-        this.buttonMid.position.y = -1.42
-        this.buttonMid.scale.set(0.5, 0.5, 0.5); 
+        this.buttonMid.position.z = 2.0
+        this.buttonMid.position.y = -5.68
+        this.buttonMid.scale.set(2.0, 2.0, 2.0);
+        this.buttonMid.onPress = () => {
+            // If egg, hatch instantly; otherwise trigger playing
+            if (this.pet.current_object === this.pet.egg) {
+                this.pet.hatchNow();
+            } else if (this.pet.current_object && this.pet.current_object.setState) {
+                this.pet.current_object.setState('playing');
+            }
+        };
 
         this.buttonRight = new Button();
-        this.buttonRight.position.z = 0.5
-        this.buttonRight.position.y = -1.42
-        this.buttonRight.position.x = 0.8
-        this.buttonRight.scale.set(0.5, 0.5, 0.5);        
+        this.buttonRight.position.z = 2.0
+        this.buttonRight.position.y = -5.68
+        this.buttonRight.position.x = 3.2
+        this.buttonRight.scale.set(2.0, 2.0, 2.0);
+        this.buttonRight.onPress = () => {
+            // If egg, hatch instantly; otherwise trigger sleeping
+            if (this.pet.current_object === this.pet.egg) {
+                this.pet.hatchNow();
+            } else if (this.pet.current_object && this.pet.current_object.setState) {
+                this.pet.current_object.setState('sleeping');
+            }
+        };        
         this.buttons = [this.buttonLeft,this.buttonMid,this.buttonRight]
         this.buttons.forEach(button => {
             this.add(button)
@@ -81,8 +129,8 @@ export default class Shell extends THREE.Group{
         })
 
         this.pet = new Tamagoshi()
-        this.pet.position.y = -0.85
-        this.pet.position.z = -0.6
+        this.pet.position.y = -3.4
+        this.pet.position.z = -2.4
         // ensure pet and its children cast/receive shadows
         this.pet.traverse((c) => {
             if (c.isMesh) {
@@ -91,6 +139,121 @@ export default class Shell extends THREE.Group{
             }
         })
         this.add(this.pet)
+    }
+
+    setPhysicsWorld(world) {
+        this.physicsWorld = world;
+        console.log('[Shell] Physics world set:', world ? 'SUCCESS' : 'FAILED');
+        // Set physics world on Tamagoshi which will propagate to child
+        if (this.pet && this.pet.setPhysicsWorld) {
+            this.pet.setPhysicsWorld(world);
+        }
+        
+        // Create invisible physics walls to contain ragdoll
+        this.createBoundaryWalls();
+    }
+    
+    createBoundaryWalls() {
+        if (!this.physicsWorld) return;
+        
+        console.log('[Shell] Creating boundary walls for ragdoll containment');
+        console.log('[Shell] Shell world position:', this.position);
+        
+        // Get the shell's world position to offset walls correctly
+        const shellWorldPos = new THREE.Vector3();
+        this.getWorldPosition(shellWorldPos);
+        console.log('[Shell] Shell world position:', shellWorldPos);
+        
+        // Interior dimensions of the shell (10.4x10.4x12 inner box, scaled 4x)
+        // Inner box center is at y: 1.8, z: -1.6 relative to shell
+        // Match exact inner box dimensions to contain character properly
+        const width = 5.2;   // Half of 10.4 (inner box width, scaled 4x)
+        const height = 5.2;  // Half of 10.4 (inner box height, scaled 4x)
+        const depth = 6.0;   // Half of 12 (inner box depth, scaled 4x)
+        const wallThickness = 0.2;
+        
+        // Shell inner box is centered at y: 1.8, z: -1.6 (scaled 4x)
+        // Pet is at y: -3.4, z: -2.4 relative to shell (scaled 4x)
+        // So effective center for containment is y: -1.6, z: -4.0 in world space
+        
+        const centerY = shellWorldPos.y + 1.8;  // Shell inner box Y center (scaled 4x)
+        const centerZ = shellWorldPos.z - 1.6;   // Shell inner box Z center (scaled 4x)
+        
+        // Front wall (glass window)
+        const frontWallDesc = RAPIER.RigidBodyDesc.fixed()
+            .setTranslation(shellWorldPos.x, centerY, centerZ + depth + wallThickness);
+        const frontWallBody = this.physicsWorld.createRigidBody(frontWallDesc);
+        const frontCollider = RAPIER.ColliderDesc.cuboid(width, height, wallThickness)
+            .setRestitution(0.7)
+            .setFriction(0.2);
+        this.physicsWorld.createCollider(frontCollider, frontWallBody);
+        this.physicsColliders.push(frontWallBody);
+        console.log('[Shell] Front wall at:', shellWorldPos.x, centerY, centerZ + depth);
+        
+        // Back wall
+        const backWallDesc = RAPIER.RigidBodyDesc.fixed()
+            .setTranslation(shellWorldPos.x, centerY, centerZ - depth - wallThickness);
+        const backWallBody = this.physicsWorld.createRigidBody(backWallDesc);
+        const backCollider = RAPIER.ColliderDesc.cuboid(width, height, wallThickness)
+            .setRestitution(0.7)
+            .setFriction(0.2);
+        this.physicsWorld.createCollider(backCollider, backWallBody);
+        this.physicsColliders.push(backWallBody);
+        console.log('[Shell] Back wall at:', shellWorldPos.x, centerY, centerZ - depth);
+        
+        // Left wall
+        const leftWallDesc = RAPIER.RigidBodyDesc.fixed()
+            .setTranslation(shellWorldPos.x - width - wallThickness, centerY, centerZ);
+        const leftWallBody = this.physicsWorld.createRigidBody(leftWallDesc);
+        const leftCollider = RAPIER.ColliderDesc.cuboid(wallThickness, height, depth)
+            .setRestitution(0.7)
+            .setFriction(0.2);
+        this.physicsWorld.createCollider(leftCollider, leftWallBody);
+        this.physicsColliders.push(leftWallBody);
+        console.log('[Shell] Left wall at:', shellWorldPos.x - width, centerY, centerZ);
+        
+        // Right wall
+        const rightWallDesc = RAPIER.RigidBodyDesc.fixed()
+            .setTranslation(shellWorldPos.x + width + wallThickness, centerY, centerZ);
+        const rightWallBody = this.physicsWorld.createRigidBody(rightWallDesc);
+        const rightCollider = RAPIER.ColliderDesc.cuboid(wallThickness, height, depth)
+            .setRestitution(0.7)
+            .setFriction(0.2);
+        this.physicsWorld.createCollider(rightCollider, rightWallBody);
+        this.physicsColliders.push(rightWallBody);
+        console.log('[Shell] Right wall at:', shellWorldPos.x + width, centerY, centerZ);
+        
+        // Top wall
+        const topWallDesc = RAPIER.RigidBodyDesc.fixed()
+            .setTranslation(shellWorldPos.x, centerY + height + wallThickness, centerZ);
+        const topWallBody = this.physicsWorld.createRigidBody(topWallDesc);
+        const topCollider = RAPIER.ColliderDesc.cuboid(width, wallThickness, depth)
+            .setRestitution(0.7)
+            .setFriction(0.2);
+        this.physicsWorld.createCollider(topCollider, topWallBody);
+        this.physicsColliders.push(topWallBody);
+        console.log('[Shell] Top wall at:', shellWorldPos.x, centerY + height, centerZ);
+        
+        // Bottom wall
+        const bottomWallDesc = RAPIER.RigidBodyDesc.fixed()
+            .setTranslation(shellWorldPos.x, centerY - height - wallThickness, centerZ);
+        const bottomWallBody = this.physicsWorld.createRigidBody(bottomWallDesc);
+        const bottomCollider = RAPIER.ColliderDesc.cuboid(width, wallThickness, depth)
+            .setRestitution(0.7)
+            .setFriction(0.2);
+        this.physicsWorld.createCollider(bottomCollider, bottomWallBody);
+        this.physicsColliders.push(bottomWallBody);
+        console.log('[Shell] Bottom wall at:', shellWorldPos.x, centerY - height, centerZ);
+        
+        console.log('[Shell] Created', this.physicsColliders.length, 'boundary walls');
+    }
+    
+    setCamera(camera) {
+        this.camera = camera;
+        console.log('[Shell] Camera set:', camera ? 'SUCCESS' : 'FAILED');
+        if (this.pet && this.pet.setCamera) {
+            this.pet.setCamera(camera);
+        }
     }
 
     update() {
