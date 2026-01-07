@@ -170,7 +170,7 @@ export default class Shell extends THREE.Group{
         const width = 5.2;   // Half of 10.4 (inner box width, scaled 4x)
         const height = 5.2;  // Half of 10.4 (inner box height, scaled 4x)
         const depth = 6.0;   // Half of 12 (inner box depth, scaled 4x)
-        const wallThickness = 0.2;
+        const wallThickness = 3;
         
         // Shell inner box is centered at y: 1.8, z: -1.6 (scaled 4x)
         // Pet is at y: -3.4, z: -2.4 relative to shell (scaled 4x)
