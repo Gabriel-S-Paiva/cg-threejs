@@ -31,7 +31,7 @@ export default class Shell extends THREE.Group{
 
         // Create the final mesh
         const texture = new THREE.TextureLoader().load('../../assets/cardboard.avif')
-        const material = new THREE.MeshToonMaterial({
+        const material = new THREE.MeshPhysicalMaterial({
             color:'#ffba4a',
             map: texture
         });

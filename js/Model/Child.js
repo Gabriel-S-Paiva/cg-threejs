@@ -153,6 +153,11 @@ export default class Child extends THREE.Group {
         console.log('[Child] Camera reference set:', camera ? 'SUCCESS' : 'FAILED');
     }
 
+    resetTimer() {
+        this.lastTime = performance.now() / 1000;
+        this.nextMoveTime = Math.random() * 3 + 2;
+    }
+
     setState(newState) {
         if (this.isRagdoll) {
             console.log('[Child] setState blocked - currently in ragdoll mode');
@@ -253,7 +258,7 @@ export default class Child extends THREE.Group {
             .setAngularDamping(0.5); // Reduced from 2.0 for more spinning
         this.bodyRigidBody = this.physicsWorld.createRigidBody(bodyDesc);
         
-        const bodyCollider = RAPIER.ColliderDesc.ball(0.25 * scale)
+        const bodyCollider = RAPIER.ColliderDesc.ball(0.25 * scale, scale)
             .setRestitution(0.7)  // Increased from 0.3 for more bounce
             .setFriction(0.3);     // Reduced from 0.5 for less sticking
         this.physicsWorld.createCollider(bodyCollider, this.bodyRigidBody);
