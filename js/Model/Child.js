@@ -191,44 +191,225 @@ export default class Child extends THREE.Group {
     exitRagdoll() {
         this.isRagdoll = false;
         this.cleanupRagdollBodies();
+
+        // Reset positions/rotations of internal parts to default local transforms
+        this.head.position.set(2, 4, 0); // Original setup in initMesh
+        this.head.rotation.set(0, 0, Math.PI / 2); // Original rotation
+        
+        this.leftHand.position.set(2, 2, 0);
+        this.leftHand.rotation.set(0, 0, 0);
+        
+        this.rightHand.position.set(-2, 2, 0);
+        this.rightHand.rotation.set(0, 0, 0);
+        
+        this.body.position.set(0,0,0);
+        this.body.rotation.set(0,0,0);
+
+        // Reset rotation of main group to be upright (prevent tilted walking)
+        this.rotation.x = 0;
+        this.rotation.z = 0;
+        
         this.setState('idle');
     }
 
     createRagdollBodies() {
         if (!this.physicsWorld) return;
         
-        const worldPos = new THREE.Vector3();
-        this.getWorldPosition(worldPos);
+        // --- 1. SETUP & UTILS ---
+        const scale = 0.8;
+        const groupPos = new THREE.Vector3();
+        const groupQuat = new THREE.Quaternion();
+        this.getWorldPosition(groupPos);
+        this.getWorldQuaternion(groupQuat);
+
+        // Helper to get world transform of a child mesh
+        const getMeshTransform = (mesh) => {
+            const pos = new THREE.Vector3();
+            const quat = new THREE.Quaternion();
+            mesh.getWorldPosition(pos);
+            mesh.getWorldQuaternion(quat);
+            return { pos, quat };
+        };
+
+        // Helper to calculate local anchor point for a joint
+        // Returns the position of 'targetPoint' in the local space of 'bodyNode' (defined by transform tBody)
+        const getLocalAnchor = (tBody, targetPoint) => {
+             const offset = targetPoint.clone().sub(tBody.pos);
+             const invRotation = tBody.quat.clone().invert();
+             offset.applyQuaternion(invRotation);
+             return offset;
+        }
+
+        // --- 2. CREATE BODY PARTS ---
         
-        const scale = 0.8; 
-        
+        // A. MAIN BODY (Torso)
+        const tBody = getMeshTransform(this.body);
         const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
-            .setTranslation(worldPos.x, worldPos.y, worldPos.z)
-            .setLinearDamping(0.5) 
-            .setAngularDamping(0.5); 
+            .setTranslation(tBody.pos.x, tBody.pos.y, tBody.pos.z)
+            .setRotation(tBody.quat)
+            .setLinearDamping(0) // Zero damping for maximum speed preservation
+            .setAngularDamping(0)
+            .setCcdEnabled(true);
+        
+        // Inherit velocity from parent/animation
+        if (this.currentWorldVelocity) {
+            bodyDesc.setLinvel(
+                this.currentWorldVelocity.x, 
+                this.currentWorldVelocity.y, 
+                this.currentWorldVelocity.z
+            );
+        }
+
         this.bodyRigidBody = this.physicsWorld.createRigidBody(bodyDesc);
         
-        // Use capsule collider instead of ball for better character shape
-        const capsuleHalfHeight = 1.2 * scale;  // Half height of main body
-        const capsuleRadius = 0.8 * scale;      // Radius to encompass body width
-        const bodyCollider = RAPIER.ColliderDesc.capsule(capsuleHalfHeight, capsuleRadius)
-            .setRestitution(0.7)  
-            .setFriction(0.3);  
+        // Capsule for body
+        const bodyCollider = RAPIER.ColliderDesc.capsule(1.5 * scale, 2.0 * scale)
+            .setRestitution(0.9) // High restitution for strong bounce/invert movement
+            .setFriction(0.2)    // Low friction so it doesn't stick to walls
+            .setDensity(1.5);
         this.physicsWorld.createCollider(bodyCollider, this.bodyRigidBody);
-        
-        const impulse = {
-            x: (Math.random() - 0.5) * 0.4, 
-            y: Math.random() * 0.5 + 0.2, 
-            z: (Math.random() - 0.5) * 0.4  
-        };
-        this.bodyRigidBody.applyImpulse(impulse, true);
-        
         this.rigidBodies.push(this.bodyRigidBody);
+        
+        // Extend collider to include head volume since it's now static relative to body
+        const headCollider = RAPIER.ColliderDesc.ball(1.6 * scale)
+            .setTranslation(0, 4.0 * scale, 0) // Offset relative to body center in local space? No, relative to RB COM.
+            // Body RB is at body mesh origin. Head mesh is at (2,4,0)? No, Head is child of Body.
+            // Head position in initMesh was (2,4,0)?? Wait.
+            // this.head.position.y = 4; This is relative to this.body.
+            // this.body is at (0,0,0) of Child Group.
+            // RB is created at World Transform of this.body.
+            // So if we add a collider to bodyRB with offset (0, 4, 0) * scale, it should cover the head.
+            .setRestitution(0.9)
+            .setDensity(0.8);
+        this.physicsWorld.createCollider(headCollider, this.bodyRigidBody);
+
+        console.log(`[Child] Body RB at: ${tBody.pos.x.toFixed(2)}, ${tBody.pos.y.toFixed(2)}, ${tBody.pos.z.toFixed(2)}`);
+
+
+        // C. LEFT HAND
+        const tLHand = getMeshTransform(this.leftHand);
+        const lHandDesc = RAPIER.RigidBodyDesc.dynamic()
+            .setTranslation(tLHand.pos.x, tLHand.pos.y, tLHand.pos.z)
+            .setRotation(tLHand.quat)
+            .setLinearDamping(0.1);
+            
+        if (this.currentWorldVelocity) {
+            lHandDesc.setLinvel(
+                this.currentWorldVelocity.x, 
+                this.currentWorldVelocity.y, 
+                this.currentWorldVelocity.z
+            );
+        }
+
+        this.lHandRigidBody = this.physicsWorld.createRigidBody(lHandDesc);
+        const lHandCollider = RAPIER.ColliderDesc.ball(0.5 * scale)
+            .setDensity(0.5)
+            .setRestitution(0.8); // Bouncy hands
+        this.physicsWorld.createCollider(lHandCollider, this.lHandRigidBody);
+        this.rigidBodies.push(this.lHandRigidBody);
+
+        // Link Left Hand to Body
+        // Anchor at Shoulder on Body side, Anchor at Hand on Hand side.
+        // Shoulder is approx (1.8, 1.5, 0) relative to body center unscaled.
+        const shoulderOffsetLeft = new THREE.Vector3(2.0, 2.0, 0).multiplyScalar(scale).applyQuaternion(tBody.quat).add(tBody.pos);
+        const lShoulderAnchorBody = getLocalAnchor(tBody, shoulderOffsetLeft);
+        // Hand anchor is implicitly the center of the hand ball if we use (0,0,0) relative to hand.
+        // But we want distance constraint (arm length).
+        // If we anchor the joint at the shoulder point for both bodies:
+        // Body-side is Shoulder. Hand-side is (HandCenter - ShoulderWorld) in local hand space -> likely negative X offset.
+        // This makes the arm act like a rigid stick if used with fixed joint, or rope if spherical?
+        // No, Spherical joint creates a pivot. If we pivot at Shoulder, the hand must BE at shoulder?
+        // No, we want the hand to SWING around the shoulder at a DISTANCE.
+        // Rapier SphericalJoint connects two points and keeps them together.
+        // To strictly distance constrain, we'd need a rope or distance joint.
+        // But spherical joint + offset is usually how "arms" are done if the arm mesh fills the gap.
+        // Here, hands are floating balls?
+        // If hands are floating balls, we need the "invisible arm" to be the constraint distance.
+        // We can do this by defining the anchor to be at the shoulder for the Body, 
+        // AND the anchor to be at the SHOULDER (remote point) for the Hand.
+        // This means the Hand's pivot point is outside itself (at the shoulder).
+        // The hand will then rotate around that remote pivot, maintaining the radius.
+        const lShoulderAnchorHand = getLocalAnchor(tLHand, shoulderOffsetLeft);
+
+        const lHandJoint = RAPIER.JointData.spherical(
+            { x: lShoulderAnchorBody.x, y: lShoulderAnchorBody.y, z: lShoulderAnchorBody.z },
+            { x: lShoulderAnchorHand.x, y: lShoulderAnchorHand.y, z: lShoulderAnchorHand.z }
+        );
+        this.physicsWorld.createImpulseJoint(lHandJoint, this.bodyRigidBody, this.lHandRigidBody, false);
+
+
+        // D. RIGHT HAND
+        const tRHand = getMeshTransform(this.rightHand);
+        const rHandDesc = RAPIER.RigidBodyDesc.dynamic()
+            .setTranslation(tRHand.pos.x, tRHand.pos.y, tRHand.pos.z)
+            .setRotation(tRHand.quat)
+            .setLinearDamping(0.1);
+            
+        if (this.currentWorldVelocity) {
+            rHandDesc.setLinvel(
+                this.currentWorldVelocity.x, 
+                this.currentWorldVelocity.y, 
+                this.currentWorldVelocity.z
+            );
+        }
+
+        this.rHandRigidBody = this.physicsWorld.createRigidBody(rHandDesc);
+        const rHandCollider = RAPIER.ColliderDesc.ball(0.5 * scale)
+            .setDensity(0.5)
+            .setRestitution(0.8);
+        this.physicsWorld.createCollider(rHandCollider, this.rHandRigidBody);
+        this.rigidBodies.push(this.rHandRigidBody);
+
+        // Link Right Hand to Body
+        const shoulderOffsetRight = new THREE.Vector3(-2.0, 2.0, 0).multiplyScalar(scale).applyQuaternion(tBody.quat).add(tBody.pos);
+        const rShoulderAnchorBody = getLocalAnchor(tBody, shoulderOffsetRight);
+        const rShoulderAnchorHand = getLocalAnchor(tRHand, shoulderOffsetRight);
+
+        const rHandJoint = RAPIER.JointData.spherical(
+            { x: rShoulderAnchorBody.x, y: rShoulderAnchorBody.y, z: rShoulderAnchorBody.z },
+            { x: rShoulderAnchorHand.x, y: rShoulderAnchorHand.y, z: rShoulderAnchorHand.z }
+        );
+        this.physicsWorld.createImpulseJoint(rHandJoint, this.bodyRigidBody, this.rHandRigidBody, false);
+
+        // --- 3. APPLY FORCES ---
+        
+        // Helper for random impulse
+        const applyRandomImpulse = (rb, multiplier = 1.0) => {
+           const mass = rb.mass();
+           // Increase base magnitude significantly
+           const mag = (300 + Math.random() * 300) * (mass > 0 ? mass * 0.1 : 1) * multiplier;
+           const ang = Math.random() * Math.PI * 2;
+           // Ensure strong upward force
+           const up = (150 + Math.random() * 150) * (mass > 0 ? mass * 0.1 : 1) * multiplier;
+           
+           rb.applyImpulse({
+               x: Math.cos(ang) * mag,
+               y: up,
+               z: Math.sin(ang) * mag
+           }, true);
+           
+           rb.applyTorqueImpulse({
+                x: (Math.random()-0.5) * mag * 0.5,
+                y: (Math.random()-0.5) * mag * 0.5,
+                z: (Math.random()-0.5) * mag * 0.5
+           }, true);
+        };
+
+        // Main kick to body
+        applyRandomImpulse(this.bodyRigidBody, 1.0);
+        
+        // Smaller kicks to limbs for chaos
+        applyRandomImpulse(this.lHandRigidBody, 0.5);
+        applyRandomImpulse(this.rHandRigidBody, 0.5);
+
+        console.log(`[Child] Multi-part ragdoll created. Body Mass: ${this.bodyRigidBody.mass().toFixed(2)}`);
+        
     }
 
     cleanupRagdollBodies() {
         if (!this.physicsWorld) return;
         
+        // Remove all bodies (joints are auto-removed by Rapier)
         this.rigidBodies.forEach(rb => {
             if (rb && this.physicsWorld.bodies.contains(rb.handle)) {
                 this.physicsWorld.removeRigidBody(rb);
@@ -236,24 +417,106 @@ export default class Child extends THREE.Group {
         });
         this.rigidBodies = [];
         this.bodyRigidBody = null;
+        this.lHandRigidBody = null;
+        this.rHandRigidBody = null;
+    }
+
+    // Helper to sync a mesh to a rigid body relative to a parent
+    syncMeshToRB(mesh, rb, parentMesh) {
+         if (!rb || !mesh) return;
+
+         const pos = rb.translation();
+         const rot = rb.rotation();
+         
+         // If we have a parent mesh, we need to convert RB World Transform -> Parent Local Space
+         // Because 'mesh' is a child of 'parentMesh' in the scene graph.
+         if (parentMesh) {
+             const worldPos = new THREE.Vector3(pos.x, pos.y, pos.z);
+             const worldQuat = new THREE.Quaternion(rot.x, rot.y, rot.z, rot.w);
+             
+             // Convert to parent's local space
+             const localPos = parentMesh.worldToLocal(worldPos);
+             
+             const parentWorldQuat = new THREE.Quaternion();
+             parentMesh.getWorldQuaternion(parentWorldQuat);
+             const localQuat = parentWorldQuat.invert().multiply(worldQuat);
+             
+             mesh.position.copy(localPos);
+             mesh.quaternion.copy(localQuat);
+         } else {
+             // If no parent (or parent is World?), just copying might be wrong if 'mesh' has a parent in ThreeJS.
+             // But here we use this for 'this.body' which is a child of 'this' (Child Group).
+             // AND 'this' (Child Group) is being moved to follow the RB too? 
+             // NO. We should move 'this.body' relative to 'this'.
+         }
     }
 
     updateRagdoll() {
         if (!this.bodyRigidBody) return;
         
-        const pos = this.bodyRigidBody.translation();
-        const rot = this.bodyRigidBody.rotation();
+        // 1. Sync Logic
+        // The 'Body' RB represents the main torso. 
+        // We move the entire Child Group's 'position' to follow the Body RB's position roughly?
+        // OR we leave Child Group at (0,0,0) of shell, and move internal meshes?
+        // 'this' is the Child class (Group). 'this.body' is the mesh container.
+        // Let's move 'this.body' (and its children) to match the simulation.
         
-        const parentWorldPos = new THREE.Vector3();
-        this.parent.getWorldPosition(parentWorldPos);
+        // Update 'this.body' relative to 'this' (the Child Group)
+        const bPos = this.bodyRigidBody.translation();
+        const bRot = this.bodyRigidBody.rotation();
         
-        this.position.set(
-            pos.x - parentWorldPos.x,
-            pos.y - parentWorldPos.y,
-            pos.z - parentWorldPos.z
-        );
-        this.body.quaternion.set(rot.x, rot.y, rot.z, rot.w);
-        this.currentPosition.copy(this.position);
+        const worldPos = new THREE.Vector3(bPos.x, bPos.y, bPos.z);
+        const worldQuat = new THREE.Quaternion(bRot.x, bRot.y, bRot.z, bRot.w);
+        
+        // Map World -> Local of 'this' (Child Group)
+        // 'this' itself stays put (or moves if we wanted). Let's keep 'this' put and move 'this.body'.
+        const localPos = this.worldToLocal(worldPos.clone());
+        
+        const parentWorldQuat = new THREE.Quaternion();
+        this.getWorldQuaternion(parentWorldQuat);
+        const localQuat = parentWorldQuat.invert().multiply(worldQuat.clone());
+        
+        // Apply to main body mesh
+        this.body.position.copy(localPos);
+        this.body.quaternion.copy(localQuat);
+        
+        // 2. Sync Limbs (Head, Hands)
+        // Head and Hands are children of 'this.body'.
+        // So we need to set their position/rotation relative to 'this.body'.
+        
+        const syncLimb = (mesh, rb) => {
+             if (!rb || !mesh) return;
+             const rPos = rb.translation();
+             const rRot = rb.rotation();
+             
+             const rWorldPos = new THREE.Vector3(rPos.x, rPos.y, rPos.z);
+             const rWorldQuat = new THREE.Quaternion(rRot.x, rRot.y, rRot.z, rRot.w);
+             
+             // Convert World -> Body Local Space
+             // Note: 'this.body' has just been updated above, so its world matrix needs update?
+             this.body.updateMatrixWorld(true);
+             
+             const lPos = this.body.worldToLocal(rWorldPos);
+             
+             const bodyWorldQuat = new THREE.Quaternion();
+             this.body.getWorldQuaternion(bodyWorldQuat);
+             const lQuat = bodyWorldQuat.invert().multiply(rWorldQuat);
+             
+             mesh.position.copy(lPos);
+             mesh.quaternion.copy(lQuat);
+        };
+        
+        syncLimb(this.leftHand, this.lHandRigidBody);
+        syncLimb(this.rightHand, this.rHandRigidBody);
+
+        this.currentPosition.copy(this.body.position);
+
+
+        this.logTimer = (this.logTimer || 0) + 1;
+        if (this.logTimer % 60 === 0) {
+           const vel = this.bodyRigidBody.linvel();
+           console.log(`[Child] Ragdoll Center: ${bPos.x.toFixed(2)}, ${bPos.y.toFixed(2)}, ${bPos.z.toFixed(2)} | Speed: ${Math.sqrt(vel.x**2 + vel.y**2 + vel.z**2).toFixed(2)}`);
+        }
     }
 
     updateIdle(now, dt) {
@@ -279,12 +542,48 @@ export default class Child extends THREE.Group {
         if (!this.isLookingAtCamera) {
             this.nextMoveTime -= dt;
             if (this.nextMoveTime <= 0) {
-              
-                this.targetPosition.set(
-                    (Math.random() - 0.5) * 6.4, 
-                    0, 
-                    (Math.random() - 0.5) * 3.2 
-                );
+                // Find a valid position that doesn't intersect walls/objects
+                let attempts = 0;
+                let found = false;
+                
+                while (attempts < 10 && !found) {
+                    // Generate random point within bounds
+                    const tx = (Math.random() - 0.5) * 6.4;
+                    const tz = (Math.random() - 0.5) * 3.2;
+                    
+                    if (this.physicsWorld) {
+                         // Raycast from current pos (slightly up) to target to check for obstacles
+                         // Use local Y=1.0 (approx chest height relative to Child root)
+                         const startLocal = new THREE.Vector3(this.currentPosition.x, 1.0, this.currentPosition.z);
+                         const endLocal = new THREE.Vector3(tx, 1.0, tz);
+                         
+                         // Need to convert to World Space for Rapier raycast
+                         const startWorld = startLocal.clone().applyMatrix4(this.matrixWorld);
+                         const endWorld = endLocal.clone().applyMatrix4(this.matrixWorld);
+                         
+                         const dir = new THREE.Vector3().subVectors(endWorld, startWorld);
+                         const dist = dir.length();
+                         
+                         if (dist > 0.1) {
+                             dir.normalize();
+                             const ray = new RAPIER.Ray({x: startWorld.x, y: startWorld.y, z: startWorld.z}, {x: dir.x, y: dir.y, z: dir.z});
+                             // hit solid objects only
+                             const hit = this.physicsWorld.castRay(ray, dist, true);
+                             
+                             if (!hit) {
+                                 this.targetPosition.set(tx, 0, tz);
+                                 found = true;
+                             }
+                         } else {
+                             found = true; // Too close, ignore
+                         }
+                    } else {
+                         this.targetPosition.set(tx, 0, tz);
+                         found = true;
+                    }
+                    attempts++;
+                }
+
                 this.nextMoveTime = Math.random() * 3 + 2;
             }
 
@@ -461,6 +760,22 @@ export default class Child extends THREE.Group {
         const dt = now - this.lastTime;
         this.lastTime = now;
         this.stateTime += dt;
+        
+        // Track global velocity for ragdoll inheritance
+        const worldPos = new THREE.Vector3();
+        this.getWorldPosition(worldPos);
+        if (this.previousWorldPos) {
+            // Velocity = distance / time
+            // dt can be very small, so we use a small epsilon to avoid infinity
+            const timeStep = Math.max(dt, 0.001);
+            this.currentWorldVelocity = worldPos.clone().sub(this.previousWorldPos).divideScalar(timeStep);
+            
+            // Debug shake velocity
+            // if (this.currentWorldVelocity.length() > 2) console.log("Child Velocity:", this.currentWorldVelocity.length());
+        } else {
+            this.currentWorldVelocity = new THREE.Vector3(0, 0, 0);
+        }
+        this.previousWorldPos = worldPos;
 
         if (this.isRagdoll) {
             this.updateRagdoll();

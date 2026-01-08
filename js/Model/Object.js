@@ -78,25 +78,43 @@ export default class Object extends THREE.Group {
         this.getWorldPosition(worldPos);
         this.getWorldQuaternion(worldQuat);
         
-        // Calculate dimensions from bounding box (rounded to cube)
+        // Calculate dimensions from bounding box
+        this.boundingBox.setFromObject(this.model);
         const size = new THREE.Vector3();
         this.boundingBox.getSize(size);
         
-        // Round to closest cube (use average of dimensions)
-        const avgSize = (size.x + size.y + size.z) / 3;
-        const halfExtents = avgSize / 2;
+        // Calculate center offset relative to the group's position
+        // Since setFromObject computes world AABB, we need to convert the center to local space
+        // effectively, getting the offset of the model geometry from the Group's origin
+        const centerWorld = new THREE.Vector3();
+        this.boundingBox.getCenter(centerWorld);
         
-        console.log('[Object] Creating collision box with half extents:', halfExtents);
+        // CORRECTION: We need the offset in unscaled local space (physics space)
+        // Previous worldToLocal was affected by the Group's scale (0.015), effectively multiplying the offset distance by 66.
+        // We want: (CenterWorld - GroupPos) rotated into GroupFrame.
+        const groupPos = new THREE.Vector3();
+        this.getWorldPosition(groupPos);
+        const groupQuat = new THREE.Quaternion();
+        this.getWorldQuaternion(groupQuat);
+
+        const centerLocal = centerWorld.clone().sub(groupPos);
+        centerLocal.applyQuaternion(groupQuat.clone().invert());
+
+        console.log(`[Object] Creating collision box for ${this.modelPath}`);
+        console.log(`[Object] Size: ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)}`);
+        console.log(`[Object] Center Local Offset (Corrected): ${centerLocal.x.toFixed(2)}, ${centerLocal.y.toFixed(2)}, ${centerLocal.z.toFixed(2)}`);
         
-        // Create fixed rigid body (static object)
+        // Create fixed rigid body (static object) at the Group's world position
         const bodyDesc = RAPIER.RigidBodyDesc.fixed()
             .setTranslation(worldPos.x, worldPos.y, worldPos.z)
             .setRotation({ x: worldQuat.x, y: worldQuat.y, z: worldQuat.z, w: worldQuat.w });
         
         this.rigidBody = this.physicsWorld.createRigidBody(bodyDesc);
         
-        // Create cuboid collider
-        const colliderDesc = RAPIER.ColliderDesc.cuboid(halfExtents, halfExtents, halfExtents)
+        // Create cuboid collider using exact dimensions
+        // The collider is positioned relative to the rigid body using centerLocal
+        const colliderDesc = RAPIER.ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2)
+            .setTranslation(centerLocal.x, centerLocal.y, centerLocal.z)
             .setRestitution(0.5)
             .setFriction(0.7);
         

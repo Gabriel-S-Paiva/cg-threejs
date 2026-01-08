@@ -229,109 +229,59 @@ export default class Shell extends THREE.Group{
     createBoundaryWalls() {
         if (!this.physicsWorld) return;
         
-        console.log('[Shell] Creating boundary walls for ragdoll containment');
-        console.log('[Shell] Shell world position:', this.position);
+        console.log('[Shell] Creating dynamic boundary walls for ragdoll containment');
         
-        // Get the shell's world position to offset walls correctly
-        const shellWorldPos = new THREE.Vector3();
-        this.getWorldPosition(shellWorldPos);
-        console.log('[Shell] Shell world position:', shellWorldPos);
+        this.wallBodies = [];
         
-        // Interior dimensions of the shell (10.4x10.4x12 inner box, scaled 4x)
-        // Inner box center is at y: 1.8, z: -1.6 relative to shell
-        // Match exact inner box dimensions to contain character properly
-        const width = 5.2;   // Half of 10.4 (inner box width, scaled 4x)
-        const height = 5.2;  // Half of 10.4 (inner box height, scaled 4x)
-        const depth = 6.0;   // Half of 12 (inner box depth, scaled 4x)
-        const wallThickness = 3;
+        // Define walls relative to Shell Local Space (Center of interior: 0, 1.8, -1.6)
+        const cx = 0, cy = 1.8, cz = -1.6;
+        const w = 5.2;   // Width radius
+        const h = 5.2;   // Height radius
+        const d = 6.0;   // Depth radius
+        const th = 1.0;  // Wall thickness (thinner is fine for boxes)
         
-        // Shell inner box is centered at y: 1.8, z: -1.6 (scaled 4x)
-        // Pet is at y: -3.4, z: -2.4 relative to shell (scaled 4x)
-        // So effective center for containment is y: -1.6, z: -4.0 in world space
+        const walls = [
+            // Window (glass)
+            { pos: new THREE.Vector3(0, 1.8, 1.8), size: [5.1, 5.1, 0.1] },
+            // Front (behind glass, effective boundary) - actually the window IS the boundary
+            // Back Wall
+            { pos: new THREE.Vector3(cx, cy, cz - d - th), size: [w, h, th] },
+            // Front Wall (Opposite back)
+            { pos: new THREE.Vector3(cx, cy, cz + d + th), size: [w, h, th] },
+            // Left Wall
+            { pos: new THREE.Vector3(cx - w - th, cy, cz), size: [th, h, d] },
+            // Right Wall
+            { pos: new THREE.Vector3(cx + w + th, cy, cz), size: [th, h, d] },
+            // Top Wall (Ceiling)
+            { pos: new THREE.Vector3(cx, cy + h + th, cz), size: [w, th, d] },
+            // Bottom Wall (Floor)
+            { pos: new THREE.Vector3(cx, cy - h - th, cz), size: [w, th, d] }
+        ];
         
-        const centerY = shellWorldPos.y + 1.8;  // Shell inner box Y center (scaled 4x)
-        const centerZ = shellWorldPos.z - 1.6;   // Shell inner box Z center (scaled 4x)
+        // Ensure matrices are up to date
+        this.updateMatrixWorld(true);
+
+        walls.forEach(def => {
+             // Calculate initial world position/rotation
+             const worldPos = def.pos.clone().applyMatrix4(this.matrixWorld);
+             const worldQuat = new THREE.Quaternion().setFromRotationMatrix(this.matrixWorld);
+             
+             // Create Kinematic Position-Based body so it can be moved
+             const bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
+                 .setTranslation(worldPos.x, worldPos.y, worldPos.z)
+                 .setRotation(worldQuat);
+                 
+             const body = this.physicsWorld.createRigidBody(bodyDesc);
+             
+             const collider = RAPIER.ColliderDesc.cuboid(def.size[0], def.size[1], def.size[2])
+                .setRestitution(0.8)
+                .setFriction(0.2);
+             this.physicsWorld.createCollider(collider, body);
+             
+             this.wallBodies.push({ body, localPos: def.pos });
+        });
         
-        // Create collider for window mesh (glass) so ragdoll bounces off it
-        const windowWorldPos = new THREE.Vector3();
-        this.windowMesh.getWorldPosition(windowWorldPos);
-        const windowWallDesc = RAPIER.RigidBodyDesc.fixed()
-            .setTranslation(windowWorldPos.x, windowWorldPos.y, windowWorldPos.z);
-        const windowWallBody = this.physicsWorld.createRigidBody(windowWallDesc);
-        const windowCollider = RAPIER.ColliderDesc.cuboid(5.1, 5.1, 0.1)
-            .setRestitution(0.8)
-            .setFriction(0.1);
-        this.windowCollider = this.physicsWorld.createCollider(windowCollider, windowWallBody);
-        this.physicsColliders.push(windowWallBody);
-        console.log('[Shell] Window collider at:', windowWorldPos.x, windowWorldPos.y, windowWorldPos.z);
-        
-        // Front wall (glass window)
-        const frontWallDesc = RAPIER.RigidBodyDesc.fixed()
-            .setTranslation(shellWorldPos.x, centerY, centerZ + depth + wallThickness);
-        const frontWallBody = this.physicsWorld.createRigidBody(frontWallDesc);
-        const frontCollider = RAPIER.ColliderDesc.cuboid(width, height, wallThickness)
-            .setRestitution(0.7)
-            .setFriction(0.2);
-        this.physicsWorld.createCollider(frontCollider, frontWallBody);
-        this.physicsColliders.push(frontWallBody);
-        console.log('[Shell] Front wall at:', shellWorldPos.x, centerY, centerZ + depth);
-        
-        // Back wall
-        const backWallDesc = RAPIER.RigidBodyDesc.fixed()
-            .setTranslation(shellWorldPos.x, centerY, centerZ - depth - wallThickness);
-        const backWallBody = this.physicsWorld.createRigidBody(backWallDesc);
-        const backCollider = RAPIER.ColliderDesc.cuboid(width, height, wallThickness)
-            .setRestitution(0.7)
-            .setFriction(0.2);
-        this.physicsWorld.createCollider(backCollider, backWallBody);
-        this.physicsColliders.push(backWallBody);
-        console.log('[Shell] Back wall at:', shellWorldPos.x, centerY, centerZ - depth);
-        
-        // Left wall
-        const leftWallDesc = RAPIER.RigidBodyDesc.fixed()
-            .setTranslation(shellWorldPos.x - width - wallThickness, centerY, centerZ);
-        const leftWallBody = this.physicsWorld.createRigidBody(leftWallDesc);
-        const leftCollider = RAPIER.ColliderDesc.cuboid(wallThickness, height, depth)
-            .setRestitution(0.7)
-            .setFriction(0.2);
-        this.physicsWorld.createCollider(leftCollider, leftWallBody);
-        this.physicsColliders.push(leftWallBody);
-        console.log('[Shell] Left wall at:', shellWorldPos.x - width, centerY, centerZ);
-        
-        // Right wall
-        const rightWallDesc = RAPIER.RigidBodyDesc.fixed()
-            .setTranslation(shellWorldPos.x + width + wallThickness, centerY, centerZ);
-        const rightWallBody = this.physicsWorld.createRigidBody(rightWallDesc);
-        const rightCollider = RAPIER.ColliderDesc.cuboid(wallThickness, height, depth)
-            .setRestitution(0.7)
-            .setFriction(0.2);
-        this.physicsWorld.createCollider(rightCollider, rightWallBody);
-        this.physicsColliders.push(rightWallBody);
-        console.log('[Shell] Right wall at:', shellWorldPos.x + width, centerY, centerZ);
-        
-        // Top wall
-        const topWallDesc = RAPIER.RigidBodyDesc.fixed()
-            .setTranslation(shellWorldPos.x, centerY + height + wallThickness, centerZ);
-        const topWallBody = this.physicsWorld.createRigidBody(topWallDesc);
-        const topCollider = RAPIER.ColliderDesc.cuboid(width, wallThickness, depth)
-            .setRestitution(0.7)
-            .setFriction(0.2);
-        this.physicsWorld.createCollider(topCollider, topWallBody);
-        this.physicsColliders.push(topWallBody);
-        console.log('[Shell] Top wall at:', shellWorldPos.x, centerY + height, centerZ);
-        
-        // Bottom wall
-        const bottomWallDesc = RAPIER.RigidBodyDesc.fixed()
-            .setTranslation(shellWorldPos.x, centerY - height - wallThickness, centerZ);
-        const bottomWallBody = this.physicsWorld.createRigidBody(bottomWallDesc);
-        const bottomCollider = RAPIER.ColliderDesc.cuboid(width, wallThickness, depth)
-            .setRestitution(0.7)
-            .setFriction(0.2);
-        this.physicsWorld.createCollider(bottomCollider, bottomWallBody);
-        this.physicsColliders.push(bottomWallBody);
-        console.log('[Shell] Bottom wall at:', shellWorldPos.x, centerY - height, centerZ);
-        
-        console.log('[Shell] Created', this.physicsColliders.length, 'boundary walls');
+        console.log('[Shell] Created', this.wallBodies.length, 'kinematic boundary walls');
     }
     
     setCamera(camera) {
@@ -343,6 +293,21 @@ export default class Shell extends THREE.Group{
     }
 
     update() {
+         // Update kinematic walls if they exist
+         if (this.wallBodies && this.wallBodies.length > 0) {
+             const worldQuat = new THREE.Quaternion();
+             this.getWorldQuaternion(worldQuat);
+             
+             this.wallBodies.forEach(wb => {
+                 // Calculate target world position for this frame
+                 const worldPos = wb.localPos.clone().applyMatrix4(this.matrixWorld);
+                 
+                 // Apply to kinematic body
+                 wb.body.setNextKinematicTranslation(worldPos);
+                 wb.body.setNextKinematicRotation(worldQuat);
+             });
+         }
+         
         this.buttons.forEach(button => {
             button.update?.()
         });
