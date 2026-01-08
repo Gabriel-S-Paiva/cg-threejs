@@ -142,7 +142,7 @@ export default class Shell extends THREE.Group{
         })
         this.add(this.pet)
         
-        // Add object with collision
+        // ADD OBJECTS
         this.chair = new Object();
         this.chair.position.set(2.5, -3.2, -6);
         this.chair.rotation.y = - Math.PI / 8
@@ -153,6 +153,32 @@ export default class Shell extends THREE.Group{
         this.chandelier.position.set(4,-3.2,-4.2);
         this.chandelier.scale.set(1,1,1)
         this.add(this.chandelier)
+        // LIGHT CHANDELIER
+        this.chandelierLight = new THREE.PointLight(0xfff6e0, 8, 15, 1);
+        this.chandelierLight.position.set(0, 5.5, 0);
+        this.chandelierLight.castShadow = false;
+        this.chandelierLight.shadow.bias = -0.02;
+        this.chandelierLight.shadow.mapSize.set(1024, 1024);
+        this.chandelier.add(this.chandelierLight);
+
+        this.table = new Object('../../assets/models/sidetable.glb');
+        this.table.position.set(-2.7, -3.4, -6.1);
+        this.table.scale.set(4,4,6);
+        this.table.rotation.y = - Math.PI / 2 + Math.PI / 8
+        this.add(this.table)
+
+        this.tedy = new Object('../../assets/models/tedy.glb')
+        this.tedy.position.set(-4, -3.4, -4)
+        this.tedy.scale.set(3, 3, 3)
+        this.tedy.rotation.y = Math.PI / 6;
+        this.tedy.rotation.x = - Math.PI / 16;
+        this.add(this.tedy)
+
+        this.pc = new Object('../../assets/models/pc.glb')
+        this.pc.position.set(-2.7, -0.3, -6.1);
+        this.pc.scale.set(1.5, 1.5 ,1.5);
+        this.pc.rotation.y = Math.PI / 8
+        this.add(this.pc)
     }
 
     setPhysicsWorld(world) {
