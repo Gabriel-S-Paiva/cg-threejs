@@ -55,9 +55,9 @@ export default class Shell extends THREE.Group{
         
         // Add inner lining with different textures for floor, walls, and ceiling
         const loader = new THREE.TextureLoader();
-        const wallTexture = loader.load('../../assets/textures/cardboard.avif');
-        const floorTexture = loader.load('../../assets/textures/cardboard.avif');
-        const ceilingTexture = loader.load('../../assets/textures/cardboard.avif');
+        const wallTexture = loader.load('../../assets/textures/wood.jpg');
+        const floorTexture = loader.load('../../assets/textures/wood.jpg');
+        const ceilingTexture = loader.load('../../assets/textures/wood.jpg');
         
         // Create materials array for BoxGeometry: [right, left, top, bottom, front, back]
         const innerMaterials = [
