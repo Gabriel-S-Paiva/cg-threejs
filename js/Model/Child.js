@@ -65,7 +65,7 @@ export default class Child extends THREE.Group {
         const headPoints = headCurve.getPoints(30);
         const headGeometry = new THREE.LatheGeometry(headPoints, 24);
 
-        const texture = new THREE.TextureLoader().load('../../assets/face.png', () => {
+        const texture = new THREE.TextureLoader().load('../../assets/textures/face_happy.png', () => {
             texture.colorSpace = THREE.SRGBColorSpace;
         });
         texture.wrapS = THREE.RepeatWrapping;
