@@ -76,6 +76,7 @@ export default class Shell extends THREE.Group{
         
         // Store physics colliders for window bounds
         this.physicsColliders = [];
+        this.windowCollider = null;
 
         this.buttonLeft = new Button();
         this.buttonLeft.position.z = 2.0
@@ -147,6 +148,11 @@ export default class Shell extends THREE.Group{
         this.chair.rotation.y = - Math.PI / 8
         this.chair.scale.set(0.015, 0.015, 0.015);
         this.add(this.chair);
+
+        this.chandelier = new Object('../../assets/models/chandelier.glb');
+        this.chandelier.position.set(4,-3.2,-4.2);
+        this.chandelier.scale.set(1,1,1)
+        this.add(this.chandelier)
     }
 
     setPhysicsWorld(world) {
@@ -160,6 +166,9 @@ export default class Shell extends THREE.Group{
         // Set physics world on chair
         if (this.chair && this.chair.setPhysicsWorld) {
             this.chair.setPhysicsWorld(world);
+        }
+        if (this.chandelier && this.chandelier.setPhysicsWorld) {
+            this.chandelier.setPhysicsWorld(world);
         }
         
         // Create invisible physics walls to contain ragdoll
@@ -191,6 +200,19 @@ export default class Shell extends THREE.Group{
         
         const centerY = shellWorldPos.y + 1.8;  // Shell inner box Y center (scaled 4x)
         const centerZ = shellWorldPos.z - 1.6;   // Shell inner box Z center (scaled 4x)
+        
+        // Create collider for window mesh (glass) so ragdoll bounces off it
+        const windowWorldPos = new THREE.Vector3();
+        this.windowMesh.getWorldPosition(windowWorldPos);
+        const windowWallDesc = RAPIER.RigidBodyDesc.fixed()
+            .setTranslation(windowWorldPos.x, windowWorldPos.y, windowWorldPos.z);
+        const windowWallBody = this.physicsWorld.createRigidBody(windowWallDesc);
+        const windowCollider = RAPIER.ColliderDesc.cuboid(5.1, 5.1, 0.1)
+            .setRestitution(0.8)
+            .setFriction(0.1);
+        this.windowCollider = this.physicsWorld.createCollider(windowCollider, windowWallBody);
+        this.physicsColliders.push(windowWallBody);
+        console.log('[Shell] Window collider at:', windowWorldPos.x, windowWorldPos.y, windowWorldPos.z);
         
         // Front wall (glass window)
         const frontWallDesc = RAPIER.RigidBodyDesc.fixed()
