@@ -53,6 +53,31 @@ export default class Shell extends THREE.Group{
 
         this.add(shellMesh);
         
+        // Add inner lining with different textures for floor, walls, and ceiling
+        const loader = new THREE.TextureLoader();
+        const wallTexture = loader.load('../../assets/textures/cardboard.avif');
+        const floorTexture = loader.load('../../assets/textures/cardboard.avif');
+        const ceilingTexture = loader.load('../../assets/textures/cardboard.avif');
+        
+        // Create materials array for BoxGeometry: [right, left, top, bottom, front, back]
+        const innerMaterials = [
+            new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 }), // +X (right wall)
+            new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 }), // -X (left wall)
+            new THREE.MeshPhysicalMaterial({ map: ceilingTexture, side: THREE.BackSide, roughness: 0.8 }), // +Y (ceiling)
+            new THREE.MeshPhysicalMaterial({ map: floorTexture, side: THREE.BackSide, roughness: 0.8 }), // -Y (floor)
+            new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 }), // +Z (front wall)
+            new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 })  // -Z (back wall)
+        ];
+        
+        // Create inner lining box matching the inner cavity dimensions
+        const innerLiningGeo = new THREE.BoxGeometry(10.35, 10.35, 11.95);
+        const innerLining = new THREE.Mesh(innerLiningGeo, innerMaterials);
+        innerLining.position.z = -2.8;
+        innerLining.position.y = 1.8;
+        innerLining.castShadow = false;
+        innerLining.receiveShadow = true;
+        this.add(innerLining);
+        
         // Add transparent glass window at the front (scaled 4x)
         const windowGeometry = new RoundedBoxGeometry(10.2, 10.2, 0.2, 3);
         const windowMaterial = new THREE.MeshPhysicalMaterial({
