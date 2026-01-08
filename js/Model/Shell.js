@@ -69,8 +69,8 @@ export default class Shell extends THREE.Group{
             new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 })  // -Z (back wall)
         ];
         
-        // Create inner lining box matching the inner cavity dimensions
-        const innerLiningGeo = new THREE.BoxGeometry(10.35, 10.35, 11.95);
+        // Create inner lining box matching the inner cavity dimensions (slightly smaller to avoid overflow)
+        const innerLiningGeo = new THREE.BoxGeometry(10.2, 10.2, 9.5);
         const innerLining = new THREE.Mesh(innerLiningGeo, innerMaterials);
         innerLining.position.z = -2.8;
         innerLining.position.y = 1.8;
