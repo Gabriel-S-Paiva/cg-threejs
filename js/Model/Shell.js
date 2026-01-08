@@ -5,6 +5,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 
 import Button from './Button.js';
 import Tamagoshi from './Tamagoshi.js';
+import Object from './Object.js';
 
 export default class Shell extends THREE.Group{
     constructor() {
@@ -139,6 +140,13 @@ export default class Shell extends THREE.Group{
             }
         })
         this.add(this.pet)
+        
+        // Add object with collision
+        this.chair = new Object();
+        this.chair.position.set(2.5, -3.2, -6);
+        this.chair.rotation.y = - Math.PI / 8
+        this.chair.scale.set(0.015, 0.015, 0.015);
+        this.add(this.chair);
     }
 
     setPhysicsWorld(world) {
@@ -147,6 +155,11 @@ export default class Shell extends THREE.Group{
         // Set physics world on Tamagoshi which will propagate to child
         if (this.pet && this.pet.setPhysicsWorld) {
             this.pet.setPhysicsWorld(world);
+        }
+        
+        // Set physics world on chair
+        if (this.chair && this.chair.setPhysicsWorld) {
+            this.chair.setPhysicsWorld(world);
         }
         
         // Create invisible physics walls to contain ragdoll
@@ -261,6 +274,7 @@ export default class Shell extends THREE.Group{
             button.update?.()
         });
         this.pet.update?.()
+        this.chair.update?.()
         //this.rotation.y += 0.01;
     }
 }

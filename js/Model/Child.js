@@ -208,7 +208,10 @@ export default class Child extends THREE.Group {
             .setAngularDamping(0.5); 
         this.bodyRigidBody = this.physicsWorld.createRigidBody(bodyDesc);
         
-        const bodyCollider = RAPIER.ColliderDesc.ball(0.25 * scale, scale)
+        // Use capsule collider instead of ball for better character shape
+        const capsuleHalfHeight = 1.2 * scale;  // Half height of main body
+        const capsuleRadius = 0.8 * scale;      // Radius to encompass body width
+        const bodyCollider = RAPIER.ColliderDesc.capsule(capsuleHalfHeight, capsuleRadius)
             .setRestitution(0.7)  
             .setFriction(0.3);  
         this.physicsWorld.createCollider(bodyCollider, this.bodyRigidBody);
