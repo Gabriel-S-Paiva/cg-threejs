@@ -12,8 +12,8 @@ export default class Tamagoshi extends THREE.Group {
         this.child.scale.set(0.8,0.8,0.8)
         this.current_object = this.egg
         this.timer = 0;
-        this.camera = null; // Store camera reference
-        this.physicsWorld = null; // Store physics world reference
+        this.camera = null;
+        this.physicsWorld = null;
 
         this.add(this.current_object)
     }
@@ -36,7 +36,6 @@ export default class Tamagoshi extends THREE.Group {
         if (this.current_object !== this.child) {
             this.remove(this.current_object);
 
-            // Reset child internal position tracking to center
             this.child.position.set(0, 0, 0);
             this.child.currentPosition.set(0, 0, 0);
             this.child.targetPosition.set(0, 0, 0);
@@ -46,10 +45,6 @@ export default class Tamagoshi extends THREE.Group {
             this.current_object = this.child;
             this.add(this.current_object);
             this.timer = 1000;
-            
-            const worldPos = new THREE.Vector3();
-            this.child.getWorldPosition(worldPos);
-            console.log('[Tamagoshi] Child hatched - Local pos:', this.child.position, 'World pos:', worldPos);
         }
     }
     

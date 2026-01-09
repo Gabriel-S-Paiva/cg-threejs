@@ -9,67 +9,56 @@ import Object from './Object.js';
 
 export default class Shell extends THREE.Group{
     constructor() {
-        // Calls parent constructor (creates a group)
         super();
 
-        // Create the outer geometry (scaled 4x)
         const outerGeometry = new RoundedBoxGeometry(12, 16, 12, 3);
         const outerMesh = new THREE.Mesh(outerGeometry);
         outerMesh.position.z = -4;
         outerMesh.updateMatrix();
 
-        // Create the inner geometry (scaled 4x)
         const innerGeometry = new RoundedBoxGeometry(10.4, 10.4, 12, 3);
         const innerMesh = new THREE.Mesh(innerGeometry);
         innerMesh.position.z = -1.6;
         innerMesh.position.y = 1.8;
         innerMesh.updateMatrix();
 
-        // Perform the subtraction (outer - inner)
         const csgOuter = CSG.fromMesh(outerMesh);
         const csgInner = CSG.fromMesh(innerMesh);
         const resultCSG = csgOuter.subtract(csgInner);
 
-        // Create the final mesh
         const texture = new THREE.TextureLoader().load('../../assets/textures/cardboard.avif')
         const material = new THREE.MeshPhysicalMaterial({
             color:'#ffba4a',
             map: texture
         });
         const shellMesh = CSG.toMesh(resultCSG, outerMesh.matrix, material);
-        // CSG can produce shared/incorrect normals; convert to non-indexed and recompute normals
         if (shellMesh.geometry && shellMesh.geometry.toNonIndexed) {
             shellMesh.geometry = shellMesh.geometry.toNonIndexed();
         }
         if (shellMesh.geometry && shellMesh.geometry.computeVertexNormals) {
             shellMesh.geometry.computeVertexNormals();
         }
-        // thin CSG walls can produce incorrect shadowing on single-sided materials
         shellMesh.material.side = THREE.DoubleSide;
         if ('shadowSide' in shellMesh.material) shellMesh.material.shadowSide = THREE.DoubleSide;
-        // enable shadows on the generated shell
         shellMesh.castShadow = true;
         shellMesh.receiveShadow = true;
 
         this.add(shellMesh);
         
-        // Add inner lining with different textures for floor, walls, and ceiling
         const loader = new THREE.TextureLoader();
         const wallTexture = loader.load('../../assets/textures/wood.jpg');
         const floorTexture = loader.load('../../assets/textures/wood.jpg');
         const ceilingTexture = loader.load('../../assets/textures/wood.jpg');
         
-        // Create materials array for BoxGeometry: [right, left, top, bottom, front, back]
         const innerMaterials = [
-            new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 }), // +X (right wall)
-            new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 }), // -X (left wall)
-            new THREE.MeshPhysicalMaterial({ map: ceilingTexture, side: THREE.BackSide, roughness: 0.8 }), // +Y (ceiling)
-            new THREE.MeshPhysicalMaterial({ map: floorTexture, side: THREE.BackSide, roughness: 0.8 }), // -Y (floor)
-            new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 }), // +Z (front wall)
-            new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 })  // -Z (back wall)
+            new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 }),
+            new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 }),
+            new THREE.MeshPhysicalMaterial({ map: ceilingTexture, side: THREE.BackSide, roughness: 0.8 }),
+            new THREE.MeshPhysicalMaterial({ map: floorTexture, side: THREE.BackSide, roughness: 0.8 }),
+            new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 }),
+            new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 })
         ];
         
-        // Create inner lining box matching the inner cavity dimensions (slightly smaller to avoid overflow)
         const innerLiningGeo = new THREE.BoxGeometry(10.2, 10.2, 9.5);
         const innerLining = new THREE.Mesh(innerLiningGeo, innerMaterials);
         innerLining.position.z = -2.8;
@@ -78,7 +67,6 @@ export default class Shell extends THREE.Group{
         innerLining.receiveShadow = true;
         this.add(innerLining);
         
-        // Add transparent glass window at the front (scaled 4x)
         const windowGeometry = new RoundedBoxGeometry(10.2, 10.2, 0.2, 3);
         const windowMaterial = new THREE.MeshPhysicalMaterial({
             color: 0xffffff,
@@ -99,7 +87,6 @@ export default class Shell extends THREE.Group{
         this.windowMesh.receiveShadow = false;
         this.add(this.windowMesh);
         
-        // Store physics colliders for window bounds
         this.physicsColliders = [];
         this.windowCollider = null;
 
@@ -109,7 +96,6 @@ export default class Shell extends THREE.Group{
         this.buttonLeft.position.x = -3.2
         this.buttonLeft.scale.set(2.0, 2.0, 2.0);
         this.buttonLeft.onPress = () => {
-            // If egg, hatch instantly; otherwise trigger eating
             if (this.pet.current_object === this.pet.egg) {
                 this.pet.hatchNow();
             } else if (this.pet.current_object && this.pet.current_object.setState) {
@@ -122,7 +108,6 @@ export default class Shell extends THREE.Group{
         this.buttonMid.position.y = -5.68
         this.buttonMid.scale.set(2.0, 2.0, 2.0);
         this.buttonMid.onPress = () => {
-            // If egg, hatch instantly; otherwise trigger playing
             if (this.pet.current_object === this.pet.egg) {
                 this.pet.hatchNow();
             } else if (this.pet.current_object && this.pet.current_object.setState) {
@@ -136,7 +121,6 @@ export default class Shell extends THREE.Group{
         this.buttonRight.position.x = 3.2
         this.buttonRight.scale.set(2.0, 2.0, 2.0);
         this.buttonRight.onPress = () => {
-            // If egg, hatch instantly; otherwise trigger sleeping
             if (this.pet.current_object === this.pet.egg) {
                 this.pet.hatchNow();
             } else if (this.pet.current_object && this.pet.current_object.setState) {
@@ -146,7 +130,6 @@ export default class Shell extends THREE.Group{
         this.buttons = [this.buttonLeft,this.buttonMid,this.buttonRight]
         this.buttons.forEach(button => {
             this.add(button)
-            // ensure button meshes cast/receive shadows
             button.traverse((c) => {
                 if (c.isMesh) {
                     c.castShadow = true;
@@ -158,7 +141,6 @@ export default class Shell extends THREE.Group{
         this.pet = new Tamagoshi()
         this.pet.position.y = -3.4
         this.pet.position.z = -2.4
-        // ensure pet and its children cast/receive shadows
         this.pet.traverse((c) => {
             if (c.isMesh) {
                 c.castShadow = true;
@@ -167,7 +149,6 @@ export default class Shell extends THREE.Group{
         })
         this.add(this.pet)
         
-        // ADD OBJECTS
         this.chair = new Object();
         this.chair.position.set(2.5, -3.2, -6);
         this.chair.rotation.y = - Math.PI / 8
@@ -178,7 +159,6 @@ export default class Shell extends THREE.Group{
         this.chandelier.position.set(4,-3.2,-4.2);
         this.chandelier.scale.set(1,1,1)
         this.add(this.chandelier)
-        // LIGHT CHANDELIER
         this.chandelierLight = new THREE.PointLight(0xfff6e0, 8, 15, 1);
         this.chandelierLight.position.set(0, 5.5, 0);
         this.chandelierLight.castShadow = false;
@@ -208,13 +188,10 @@ export default class Shell extends THREE.Group{
 
     setPhysicsWorld(world) {
         this.physicsWorld = world;
-        console.log('[Shell] Physics world set:', world ? 'SUCCESS' : 'FAILED');
-        // Set physics world on Tamagoshi which will propagate to child
         if (this.pet && this.pet.setPhysicsWorld) {
             this.pet.setPhysicsWorld(world);
         }
         
-        // Set physics world on chair
         if (this.chair && this.chair.setPhysicsWorld) {
             this.chair.setPhysicsWorld(world);
         }
@@ -222,51 +199,36 @@ export default class Shell extends THREE.Group{
             this.chandelier.setPhysicsWorld(world);
         }
         
-        // Create invisible physics walls to contain ragdoll
         this.createBoundaryWalls();
     }
     
     createBoundaryWalls() {
         if (!this.physicsWorld) return;
         
-        console.log('[Shell] Creating dynamic boundary walls for ragdoll containment');
-        
         this.wallBodies = [];
         
-        // Define walls relative to Shell Local Space (Center of interior: 0, 1.8, -1.6)
         const cx = 0, cy = 1.8, cz = -1.6;
-        const w = 5.2;   // Width radius
-        const h = 5.2;   // Height radius
-        const d = 6.0;   // Depth radius
-        const th = 1.0;  // Wall thickness (thinner is fine for boxes)
+        const w = 5.2;
+        const h = 5.2;
+        const d = 6.0;
+        const th = 1.0;
         
         const walls = [
-            // Window (glass)
             { pos: new THREE.Vector3(0, 1.8, 1.8), size: [5.1, 5.1, 0.1] },
-            // Front (behind glass, effective boundary) - actually the window IS the boundary
-            // Back Wall
             { pos: new THREE.Vector3(cx, cy, cz - d - th), size: [w, h, th] },
-            // Front Wall (Opposite back)
             { pos: new THREE.Vector3(cx, cy, cz + d + th), size: [w, h, th] },
-            // Left Wall
             { pos: new THREE.Vector3(cx - w - th, cy, cz), size: [th, h, d] },
-            // Right Wall
             { pos: new THREE.Vector3(cx + w + th, cy, cz), size: [th, h, d] },
-            // Top Wall (Ceiling)
             { pos: new THREE.Vector3(cx, cy + h + th, cz), size: [w, th, d] },
-            // Bottom Wall (Floor)
             { pos: new THREE.Vector3(cx, cy - h - th, cz), size: [w, th, d] }
         ];
         
-        // Ensure matrices are up to date
         this.updateMatrixWorld(true);
 
         walls.forEach(def => {
-             // Calculate initial world position/rotation
              const worldPos = def.pos.clone().applyMatrix4(this.matrixWorld);
              const worldQuat = new THREE.Quaternion().setFromRotationMatrix(this.matrixWorld);
              
-             // Create Kinematic Position-Based body so it can be moved
              const bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
                  .setTranslation(worldPos.x, worldPos.y, worldPos.z)
                  .setRotation(worldQuat);
@@ -280,29 +242,23 @@ export default class Shell extends THREE.Group{
              
              this.wallBodies.push({ body, localPos: def.pos });
         });
-        
-        console.log('[Shell] Created', this.wallBodies.length, 'kinematic boundary walls');
     }
     
     setCamera(camera) {
         this.camera = camera;
-        console.log('[Shell] Camera set:', camera ? 'SUCCESS' : 'FAILED');
         if (this.pet && this.pet.setCamera) {
             this.pet.setCamera(camera);
         }
     }
 
     update() {
-         // Update kinematic walls if they exist
          if (this.wallBodies && this.wallBodies.length > 0) {
              const worldQuat = new THREE.Quaternion();
              this.getWorldQuaternion(worldQuat);
              
              this.wallBodies.forEach(wb => {
-                 // Calculate target world position for this frame
                  const worldPos = wb.localPos.clone().applyMatrix4(this.matrixWorld);
                  
-                 // Apply to kinematic body
                  wb.body.setNextKinematicTranslation(worldPos);
                  wb.body.setNextKinematicRotation(worldQuat);
              });
@@ -313,6 +269,5 @@ export default class Shell extends THREE.Group{
         });
         this.pet.update?.()
         this.chair.update?.()
-        //this.rotation.y += 0.01;
     }
 }

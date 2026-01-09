@@ -4,7 +4,6 @@ export default class Button extends THREE.Group {
     constructor(action = null) {
         super();
 
-        // Hearitage Behavior
         this.action = action
 
         const ringGeometry = new THREE.TorusGeometry(0.5, 0.05);

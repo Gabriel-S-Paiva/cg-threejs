@@ -24,7 +24,6 @@ export default class Egg extends THREE.Group {
         });
 
         const egg = new THREE.Mesh(geometry, material);
-        // enable shadows for the egg mesh
         egg.castShadow = true;
         egg.receiveShadow = true;
 
@@ -42,12 +41,11 @@ export default class Egg extends THREE.Group {
 
         const t = now % totalCycle;
 
-        // Oscilate then wait and reset
         if (t < oscillationDuration) {
             const phase = (t / oscillationDuration) * 2 * Math.PI * bouncesPerCycle;
             this.rotation.z = amplitude * Math.sin(phase);
         } else {
-            this.rotation.z = 0; // pause, no rotation
+            this.rotation.z = 0;
         }
     }
 }
