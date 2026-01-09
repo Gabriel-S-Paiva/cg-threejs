@@ -231,8 +231,6 @@ export default class Child extends THREE.Group {
             return { pos, quat };
         };
 
-        // Helper to calculate local anchor point for a joint
-        // Returns the position of 'targetPoint' in the local space of 'bodyNode' (defined by transform tBody)
         const getLocalAnchor = (tBody, targetPoint) => {
              const offset = targetPoint.clone().sub(tBody.pos);
              const invRotation = tBody.quat.clone().invert();
@@ -263,29 +261,14 @@ export default class Child extends THREE.Group {
         this.bodyRigidBody = this.physicsWorld.createRigidBody(bodyDesc);
         
         // Capsule for body
-        const bodyCollider = RAPIER.ColliderDesc.capsule(1.5 * scale, 2.0 * scale)
+        const bodyCollider = RAPIER.ColliderDesc.capsule(2 * scale, 2.0 * scale)
+            .setTranslation(0, 3* scale, 0)
             .setRestitution(0.9) // High restitution for strong bounce/invert movement
             .setFriction(0.2)    // Low friction so it doesn't stick to walls
             .setDensity(1.5);
         this.physicsWorld.createCollider(bodyCollider, this.bodyRigidBody);
         this.rigidBodies.push(this.bodyRigidBody);
         
-        // Extend collider to include head volume since it's now static relative to body
-        const headCollider = RAPIER.ColliderDesc.ball(1.6 * scale)
-            .setTranslation(0, 4.0 * scale, 0) // Offset relative to body center in local space? No, relative to RB COM.
-            // Body RB is at body mesh origin. Head mesh is at (2,4,0)? No, Head is child of Body.
-            // Head position in initMesh was (2,4,0)?? Wait.
-            // this.head.position.y = 4; This is relative to this.body.
-            // this.body is at (0,0,0) of Child Group.
-            // RB is created at World Transform of this.body.
-            // So if we add a collider to bodyRB with offset (0, 4, 0) * scale, it should cover the head.
-            .setRestitution(0.9)
-            .setDensity(0.8);
-        this.physicsWorld.createCollider(headCollider, this.bodyRigidBody);
-
-        console.log(`[Child] Body RB at: ${tBody.pos.x.toFixed(2)}, ${tBody.pos.y.toFixed(2)}, ${tBody.pos.z.toFixed(2)}`);
-
-
         // C. LEFT HAND
         const tLHand = getMeshTransform(this.leftHand);
         const lHandDesc = RAPIER.RigidBodyDesc.dynamic()
