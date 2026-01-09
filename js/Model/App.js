@@ -5,6 +5,8 @@ export default class App{
     constructor(){
         this.scene = new THREE.Scene();
         this.physicsWorld = null;
+        this.debugEnabled = false;
+        this.lines = null;
         this.initPhysics();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 800);
         this.camera.position.z = 20;
@@ -15,6 +17,8 @@ export default class App{
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(this.renderer.domElement);
+
+        
         
         // Mouse interaction state
         this.isDragging = false;
@@ -155,6 +159,14 @@ export default class App{
                 console.log('[App] S key pressed - triggering shake');
                 this.onShake();
             }
+            if (e.key === 'd' || e.key === 'D') {
+                this.debugEnabled = !this.debugEnabled;
+                console.log('[App] Debug mode:', this.debugEnabled);
+                if (!this.debugEnabled && this.lines) {
+                    this.lines.visible = false;
+                }
+                
+            }
         });
         
         // Window resize handler for responsiveness
@@ -195,6 +207,8 @@ export default class App{
         });
     }
 
+    
+
     add(object) {
         this.scene.add(object);
         if(object.buttons) {
@@ -215,6 +229,22 @@ export default class App{
         requestAnimationFrame(this.animate);
         if (this.physicsWorld) {
             this.physicsWorld.step();
+
+            if (this.debugEnabled) {
+                const { vertices, colors } = this.physicsWorld.debugRender();
+                
+                if (!this.lines) {
+                     const geometry = new THREE.BufferGeometry();
+                     const material = new THREE.LineBasicMaterial({ vertexColors: true, depthTest: false, depthWrite: false }); // Disable depth test to see lines over meshes
+                     this.lines = new THREE.LineSegments(geometry, material);
+                     this.lines.renderOrder = 999; 
+                     this.scene.add(this.lines);
+                }
+                
+                this.lines.visible = true;
+                this.lines.geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                this.lines.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 4));
+            }
         }
         this.objects.forEach(object => object.update?.())
         this.renderer.render(this.scene, this.camera)

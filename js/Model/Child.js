@@ -291,7 +291,8 @@ export default class Child extends THREE.Group {
         const lHandDesc = RAPIER.RigidBodyDesc.dynamic()
             .setTranslation(tLHand.pos.x, tLHand.pos.y, tLHand.pos.z)
             .setRotation(tLHand.quat)
-            .setLinearDamping(0.1);
+            .setLinearDamping(0.1)
+            .setAngularDamping(5.0); // Resist spinning (user request: not around themselves)
             
         if (this.currentWorldVelocity) {
             lHandDesc.setLinvel(
@@ -310,25 +311,11 @@ export default class Child extends THREE.Group {
 
         // Link Left Hand to Body
         // Anchor at Shoulder on Body side, Anchor at Hand on Hand side.
-        // Shoulder is approx (1.8, 1.5, 0) relative to body center unscaled.
-        const shoulderOffsetLeft = new THREE.Vector3(2.0, 2.0, 0).multiplyScalar(scale).applyQuaternion(tBody.quat).add(tBody.pos);
+        // Hand is at x=2.0. We place pivot at x=0.6 (Neck/Shoulder). 
+        // This creates an implicit "arm" radius of 1.4 between pivot and hand center.
+        const shoulderOffsetLeft = new THREE.Vector3(0.6, 2.0, 0).multiplyScalar(scale).applyQuaternion(tBody.quat).add(tBody.pos);
         const lShoulderAnchorBody = getLocalAnchor(tBody, shoulderOffsetLeft);
-        // Hand anchor is implicitly the center of the hand ball if we use (0,0,0) relative to hand.
-        // But we want distance constraint (arm length).
-        // If we anchor the joint at the shoulder point for both bodies:
-        // Body-side is Shoulder. Hand-side is (HandCenter - ShoulderWorld) in local hand space -> likely negative X offset.
-        // This makes the arm act like a rigid stick if used with fixed joint, or rope if spherical?
-        // No, Spherical joint creates a pivot. If we pivot at Shoulder, the hand must BE at shoulder?
-        // No, we want the hand to SWING around the shoulder at a DISTANCE.
-        // Rapier SphericalJoint connects two points and keeps them together.
-        // To strictly distance constrain, we'd need a rope or distance joint.
-        // But spherical joint + offset is usually how "arms" are done if the arm mesh fills the gap.
-        // Here, hands are floating balls?
-        // If hands are floating balls, we need the "invisible arm" to be the constraint distance.
-        // We can do this by defining the anchor to be at the shoulder for the Body, 
-        // AND the anchor to be at the SHOULDER (remote point) for the Hand.
-        // This means the Hand's pivot point is outside itself (at the shoulder).
-        // The hand will then rotate around that remote pivot, maintaining the radius.
+        // Hand pivot is remote (at shoulder), constraining hand to orbit shoulder at radius
         const lShoulderAnchorHand = getLocalAnchor(tLHand, shoulderOffsetLeft);
 
         const lHandJoint = RAPIER.JointData.spherical(
@@ -343,7 +330,8 @@ export default class Child extends THREE.Group {
         const rHandDesc = RAPIER.RigidBodyDesc.dynamic()
             .setTranslation(tRHand.pos.x, tRHand.pos.y, tRHand.pos.z)
             .setRotation(tRHand.quat)
-            .setLinearDamping(0.1);
+            .setLinearDamping(0.1)
+            .setAngularDamping(5.0); // Resist spinning
             
         if (this.currentWorldVelocity) {
             rHandDesc.setLinvel(
@@ -361,7 +349,8 @@ export default class Child extends THREE.Group {
         this.rigidBodies.push(this.rHandRigidBody);
 
         // Link Right Hand to Body
-        const shoulderOffsetRight = new THREE.Vector3(-2.0, 2.0, 0).multiplyScalar(scale).applyQuaternion(tBody.quat).add(tBody.pos);
+        // Hand at x=-2.0. Pivot at x=-0.6. Radius 1.4.
+        const shoulderOffsetRight = new THREE.Vector3(-0.6, 2.0, 0).multiplyScalar(scale).applyQuaternion(tBody.quat).add(tBody.pos);
         const rShoulderAnchorBody = getLocalAnchor(tBody, shoulderOffsetRight);
         const rShoulderAnchorHand = getLocalAnchor(tRHand, shoulderOffsetRight);
 
