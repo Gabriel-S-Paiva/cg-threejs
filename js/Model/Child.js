@@ -157,10 +157,11 @@ export default class Child extends THREE.Group {
                 this.body.position.y = 0;
                 this.leftLeg.rotation.x = 0;
                 this.rightLeg.rotation.x = 0;
-                this.leftHand.position.y = 2;
-                this.rightHand.position.y = 2;
+                this.leftHand.position.set(2, 2, 0);
+                this.rightHand.position.set(-2, 2, 0);
                 this.leftHand.rotation.z = 0;
                 this.rightHand.rotation.z = 0;
+                this.isGettingUp = false;
             }
             
             this.state = newState;
@@ -653,67 +654,12 @@ export default class Child extends THREE.Group {
         this.rightEarPivot.rotation.z = 
             (earAmpBounce * -Math.sin(earBounce + 0.5) + earAmpFlow * -Math.sin(earFlow + 0.8)) - Math.PI / 2;
 
-        const jumpDuration = 1.1; // Snappier jumps
-        const totalPlayTime = this.maxJumps * jumpDuration + 1.5; 
+        const totalPlayTime = 6; // Total celebration time
 
-        if (this.stateTime < this.maxJumps * jumpDuration) {
-            // JUMPING PHASE
-            const jumpPhase = (this.stateTime % jumpDuration) / jumpDuration;
-            
-            // Jump arc - extended smooth parabola
-            if (jumpPhase < 0.75) {
-                // JUMP ARC - extended natural parabola
-                const jumpT = jumpPhase / 0.75;
-                this.body.position.y = Math.sin(jumpT * Math.PI) * 0.95;
-                
-                // Slight body tilt forward during ascent
-                this.body.rotation.x = Math.sin(jumpT * Math.PI) * 0.12;
-            } else {
-                // LANDING - settle down
-                const landT = (jumpPhase - 0.75) / 0.25;
-                const bounce = Math.exp(-landT * 8) * Math.sin(landT * Math.PI * 4) * 0.1;
-                this.body.position.y = bounce;
-                this.body.rotation.x = 0;
-            }
-
-            // ARMS - energetic flapping
-            const armFlap = this.stateTime * Math.PI * 2 / (jumpDuration * 0.8);
-            const armUp = jumpPhase < 0.75 ? 1 : 0; // Raise during jump
-            
-            this.leftHand.position.set(
-                2 + Math.sin(armFlap) * 0.3,
-                2 + Math.sin(armFlap) * 0.6 + armUp * 0.8,
-                Math.cos(armFlap * 0.5) * 0.2
-            );
-            this.rightHand.position.set(
-                -2 + Math.sin(armFlap + 0.8) * 0.3,
-                2 + Math.sin(armFlap + 0.8) * 0.6 + armUp * 0.8,
-                Math.cos(armFlap * 0.5 + 0.8) * 0.2
-            );
-            
-            this.leftHand.rotation.z = Math.sin(armFlap) * 0.6;
-            this.rightHand.rotation.z = Math.sin(armFlap + 0.8) * -0.6;
-
-            // LEGS - tuck during jump, extend on landing
-            if (jumpPhase < 0.75) {
-                // Tucked during extended jump
-                const tuckT = Math.min(jumpPhase / 0.15, 1); // Quick tuck at start
-                this.leftLeg.rotation.x = -0.65 * tuckT;
-                this.rightLeg.rotation.x = -0.65 * tuckT;
-            } else {
-                // Extend for landing
-                const landT = (jumpPhase - 0.75) / 0.25;
-                this.leftLeg.rotation.x = -0.65 + 0.65 * landT;
-                this.rightLeg.rotation.x = -0.65 + 0.65 * landT;
-            }
-            
-            // HEAD - excited bobbing
-            const headBob = now * 2 * Math.PI / 0.6;
-            this.head.rotation.x = Math.sin(headBob) * 0.12;
-            
-        } else {
+        // CELEBRATION PHASE ONLY - happy wiggling and bouncing
+        if (true) {
             // CELEBRATION PHASE - happy wiggling
-            const celebrateT = this.stateTime - this.maxJumps * jumpDuration;
+            const celebrateT = this.stateTime;
             const cheerPhase = celebrateT * Math.PI * 3; 
             const wigglePhase = celebrateT * Math.PI * 6;
             
@@ -754,123 +700,163 @@ export default class Child extends THREE.Group {
     }
 
     updateSleeping(now, dt) {
-        const transitionTime = 2; // Slower, more natural settling - 2 seconds
+        // SITTING ON CHAIR - resting animation with jump
+        const walkTime = 1.5; // Time to walk to chair
+        const jumpTime = 0.8; // Time to jump onto chair
+        const transitionTime = walkTime + jumpTime;
         const t = Math.min(this.stateTime / transitionTime, 1);
         
-        // Smooth ease-out for settling down
-        const settleEase = 1 - Math.pow(1 - t, 3);
+        // Chair position - stop before chair to jump
+        const approachPos = new THREE.Vector3(2.5, 0, -2.8); // Stop 0.8 units before chair
+        const chairPos = new THREE.Vector3(2.5, 0.6, -3.6); // Higher Y to sit on chair
         
-        // BODY - settling into sleep position
-        this.body.rotation.x = THREE.MathUtils.lerp(0, Math.PI / 2, settleEase);
-        this.body.position.y = THREE.MathUtils.lerp(0, -0.5, settleEase);
-        
-        // LEGS - relaxing into comfortable position
-        this.leftLeg.rotation.x = THREE.MathUtils.lerp(0, 0.5, settleEase);
-        this.rightLeg.rotation.x = THREE.MathUtils.lerp(0, 0.5, settleEase);
-        
-        // HANDS - settling down gently
-        const leftHandY = THREE.MathUtils.lerp(2, 1, settleEase);
-        const rightHandY = THREE.MathUtils.lerp(2, 1, settleEase);
-        
-        this.leftHand.position.set(2, leftHandY, 0);
-        this.rightHand.position.set(-2, rightHandY, 0);
-        this.leftHand.rotation.z = THREE.MathUtils.lerp(0, 0.5, settleEase);
-        this.rightHand.rotation.z = THREE.MathUtils.lerp(0, -0.5, settleEase);
-
-        // EARS - drooping as falling asleep
-        const earDroop = THREE.MathUtils.lerp(-Math.PI / 2, -Math.PI / 3, settleEase);
-        this.leftEarPivot.rotation.z = earDroop;
-        this.rightEarPivot.rotation.z = earDroop;
-
-        // AFTER SETTLING - add sleeping life
-        if (t >= 1) {
-            const sleepTime = this.stateTime - transitionTime;
+        // PHASE 1: WALK TO APPROACH POSITION
+        if (this.stateTime < walkTime) {
+            const walkT = this.stateTime / walkTime;
+            const walkEase = 1 - Math.pow(1 - walkT, 3);
             
-            // BREATHING - slow, deep sleep breathing (5-second cycle)
-            const breathCycle = sleepTime * 2 * Math.PI / 5;
-            const breathAmp = 0.08; // Noticeable but gentle
+            // Walking to approach position
+            this.currentPosition.lerp(approachPos, walkEase);
+            this.position.copy(this.currentPosition);
             
-            // Body rises and falls with breath
-            const breathOffset = Math.sin(breathCycle) * breathAmp;
-            this.body.position.y = -0.5 + breathOffset;
+            // Face the chair direction
+            const targetAngle = Math.atan2(approachPos.x - this.currentPosition.x, approachPos.z - this.currentPosition.z);
+            this.rotation.y = THREE.MathUtils.lerp(this.rotation.y, targetAngle, dt * 3);
             
-            // Head subtle nod with breathing
-            this.head.rotation.x = Math.sin(breathCycle) * 0.03;
+            // Walking animation
+            const walkPhase = now * Math.PI * 4;
+            this.leftLeg.rotation.x = Math.sin(walkPhase) * 0.12;
+            this.rightLeg.rotation.x = Math.sin(walkPhase + Math.PI) * 0.12;
             
-            // EAR TWITCHES - occasional dreaming
-            // Random twitch every 8-15 seconds
-            const twitchFreq = 0.15; // Base frequency for variation
-            const twitchNoise = Math.sin(sleepTime * twitchFreq) * Math.sin(sleepTime * twitchFreq * 2.3);
+            this.body.position.y = 0;
             
-            if (twitchNoise > 0.85) { // Occasional threshold
-                const twitchAmp = Math.PI / 64;
-                const twitchSpeed = sleepTime * Math.PI * 8;
-                
-                this.leftEarPivot.rotation.z = earDroop + Math.sin(twitchSpeed) * twitchAmp;
-                this.rightEarPivot.rotation.z = earDroop + Math.sin(twitchSpeed + 1.5) * twitchAmp;
-            }
+        // PHASE 2: JUMP ONTO CHAIR
+        } else if (this.stateTime < transitionTime) {
+            const jumpT = (this.stateTime - walkTime) / jumpTime;
+            const jumpEase = jumpT < 0.5 ? 2 * jumpT * jumpT : 1 - Math.pow(-2 * jumpT + 2, 2) / 2;
             
-            // HAND MICRO-MOVEMENT - very subtle settling shifts
-            const settleShift = sleepTime * 2 * Math.PI / 12; // 12-second cycle
-            const settleAmp = 0.02;
+            // Move from approach position to chair with arc
+            this.currentPosition.x = THREE.MathUtils.lerp(approachPos.x, chairPos.x, jumpEase);
+            this.currentPosition.z = THREE.MathUtils.lerp(approachPos.z, chairPos.z, jumpEase);
+            this.currentPosition.y = 0;
+            this.position.copy(this.currentPosition);
             
-            this.leftHand.position.y = 1 + breathOffset * 0.3 + Math.sin(settleShift) * settleAmp;
-            this.rightHand.position.y = 1 + breathOffset * 0.3 + Math.sin(settleShift + 2) * settleAmp;
+            // Jump arc
+            const jumpArc = Math.sin(jumpT * Math.PI) * 0.8;
+            this.body.position.y = jumpArc;
             
-            // Tiny hand curl/uncurl
-            this.leftHand.rotation.z = 0.5 + Math.sin(settleShift * 0.5) * 0.05;
-            this.rightHand.rotation.z = -0.5 + Math.sin(settleShift * 0.5 + 1) * 0.05;
+            // Legs tuck during jump
+            const tuckAmount = Math.sin(jumpT * Math.PI) * 0.6;
+            this.leftLeg.rotation.x = tuckAmount;
+            this.rightLeg.rotation.x = tuckAmount;
+            
+            // Arms up during jump
+            this.leftHand.position.y = 2 + Math.sin(jumpT * Math.PI) * 0.8;
+            this.rightHand.position.y = 2 + Math.sin(jumpT * Math.PI) * 0.8;
+            
+        // PHASE 3: SETTLE INTO SITTING
+        } else {
+            const settleT = Math.min((this.stateTime - transitionTime) / 0.5, 1);
+            const settleEase = 1 - Math.pow(1 - settleT, 3);
+            
+            // Final position on chair
+            this.currentPosition.copy(chairPos);
+            this.position.copy(this.currentPosition);
+            
+            // Settle body height
+            this.body.position.y = THREE.MathUtils.lerp(0.8, 0.6, settleEase);
+            
+            // Legs into sitting position
+            this.leftLeg.rotation.x = THREE.MathUtils.lerp(0.6, 0.85, settleEase);
+            this.rightLeg.rotation.x = THREE.MathUtils.lerp(0.6, 0.85, settleEase);
+            
+            // Arms back down
+            this.leftHand.position.y = THREE.MathUtils.lerp(2.8, 1.2, settleEase);
+            this.rightHand.position.y = THREE.MathUtils.lerp(2.8, 1.2, settleEase);
         }
-
-        // WAKING UP - check if should wake
+        
+        // SITTING POSE
+        if (this.stateTime >= transitionTime + 0.5) {
+            const sitTime = this.stateTime - transitionTime - 0.5;
+            
+            // Ensure on chair position
+            const chairPos = new THREE.Vector3(2.5, 0.6, -3.6);
+            this.currentPosition.copy(chairPos);
+            this.position.copy(this.currentPosition);
+            
+            // Legs in sitting position
+            this.leftLeg.rotation.x = 0.85;
+            this.rightLeg.rotation.x = 0.85;
+            
+            // BREATHING - gentle resting breathing (6-second cycle)
+            const breathCycle = sitTime * 2 * Math.PI / 6;
+            const breathAmp = 0.04; // Subtle
+            this.body.position.y = 0.6 + Math.sin(breathCycle) * breathAmp;
+            
+            // HEAD - occasional look around (relaxed)
+            const lookPhase = sitTime * 2 * Math.PI / 8;
+            this.head.rotation.x = Math.sin(lookPhase * 0.5) * 0.05;
+            
+            // EARS - relaxed gentle sway
+            const earRelax = sitTime * 2 * Math.PI / 4;
+            this.leftEarPivot.rotation.z = -Math.PI / 2 + Math.sin(earRelax) * 0.05;
+            this.rightEarPivot.rotation.z = -Math.PI / 2 + Math.sin(earRelax + 0.5) * 0.05;
+            
+            // HANDS - resting on lap/sides
+            const handRelax = sitTime * 2 * Math.PI / 5;
+            this.leftHand.position.set(2, 1.2 + Math.sin(handRelax) * 0.03, 0.3);
+            this.rightHand.position.set(-2, 1.2 + Math.sin(handRelax + 1) * 0.03, 0.3);
+            this.leftHand.rotation.z = 0.2 + Math.sin(handRelax) * 0.05;
+            this.rightHand.rotation.z = -0.2 + Math.sin(handRelax + 1) * 0.05;
+        }
+        
+        // GETTING UP - check if should stand
         if (this.stateTime > 30) { 
             if (Math.random() < 0.01) {
-                // WAKE UP ANIMATION - stretch and rise
-                const wakeTime = 1.5;
-                this.wakeUpStartTime = this.stateTime;
-                this.isWakingUp = true;
+                this.isGettingUp = true;
+                this.getUpStartTime = this.stateTime;
             }
         }
         
-        // WAKE UP SEQUENCE
-        if (this.isWakingUp) {
-            const wakeElapsed = this.stateTime - (this.wakeUpStartTime || this.stateTime);
-            const wakeDuration = 1.5;
-            const wakeT = Math.min(wakeElapsed / wakeDuration, 1);
+        // GET UP SEQUENCE
+        if (this.isGettingUp) {
+            const getUpElapsed = this.stateTime - (this.getUpStartTime || this.stateTime);
+            const getUpDuration = 1.5;
+            const getUpT = Math.min(getUpElapsed / getUpDuration, 1);
             
-            if (wakeT < 1) {
-                // Stretch and rise with smooth ease
-                const wakeEase = wakeT < 0.5 ? 2 * wakeT * wakeT : 1 - Math.pow(-2 * wakeT + 2, 2) / 2;
+            if (getUpT < 1) {
+                // Stand up with smooth ease
+                const standEase = getUpT < 0.5 ? 2 * getUpT * getUpT : 1 - Math.pow(-2 * getUpT + 2, 2) / 2;
                 
-                // Body rotating upright
-                this.body.rotation.x = THREE.MathUtils.lerp(Math.PI / 2, 0, wakeEase);
-                this.body.position.y = THREE.MathUtils.lerp(-0.5, 0, wakeEase);
+                // Move back to center
+                const returnPos = new THREE.Vector3(0, 0, 0);
+                this.currentPosition.lerp(returnPos, standEase);
+                this.position.copy(this.currentPosition);
                 
                 // Legs straightening
-                this.leftLeg.rotation.x = THREE.MathUtils.lerp(0.5, 0, wakeEase);
-                this.rightLeg.rotation.x = THREE.MathUtils.lerp(0.5, 0, wakeEase);
+                this.leftLeg.rotation.x = THREE.MathUtils.lerp(0.85, 0, standEase);
+                this.rightLeg.rotation.x = THREE.MathUtils.lerp(0.85, 0, standEase);
                 
-                // Arms stretching up then down
-                const stretchPhase = wakeT * Math.PI;
-                const stretchHeight = Math.sin(stretchPhase) * 1.5;
+                // Body lowering from chair height to ground
+                this.body.position.y = THREE.MathUtils.lerp(0.6, 0, standEase);
                 
-                this.leftHand.position.y = 1 + stretchHeight;
-                this.rightHand.position.y = 1 + stretchHeight;
-                this.leftHand.rotation.z = THREE.MathUtils.lerp(0.5, 0, wakeEase);
-                this.rightHand.rotation.z = THREE.MathUtils.lerp(-0.5, 0, wakeEase);
+                // Arms back to neutral
+                this.leftHand.position.set(2, THREE.MathUtils.lerp(1.2, 2, standEase), THREE.MathUtils.lerp(0.3, 0, standEase));
+                this.rightHand.position.set(-2, THREE.MathUtils.lerp(1.2, 2, standEase), THREE.MathUtils.lerp(0.3, 0, standEase));
+                this.leftHand.rotation.z = THREE.MathUtils.lerp(0.2, 0, standEase);
+                this.rightHand.rotation.z = THREE.MathUtils.lerp(-0.2, 0, standEase);
                 
                 // Ears perking up
-                const earPerk = THREE.MathUtils.lerp(-Math.PI / 3, -Math.PI / 2, wakeEase);
-                this.leftEarPivot.rotation.z = earPerk;
-                this.rightEarPivot.rotation.z = earPerk;
+                this.leftEarPivot.rotation.z = -Math.PI / 2;
+                this.rightEarPivot.rotation.z = -Math.PI / 2;
                 
-                // Head lifting
-                this.head.rotation.x = THREE.MathUtils.lerp(0.03, 0, wakeEase);
+                // Head returning to neutral
+                this.head.rotation.x = THREE.MathUtils.lerp(0.05, 0, standEase);
                 
             } else {
-                // Wake complete - transition to idle
-                this.isWakingUp = false;
-                this.wakeUpStartTime = null;
+                // Stand complete - transition to idle
+                this.isGettingUp = false;
+                this.getUpStartTime = null;
                 this.setState('idle');
             }
         }
