@@ -79,6 +79,13 @@ export default class App{
             this.previousMousePosition = { x: e.clientX, y: e.clientY };
             this.mouseMoveHistory = [];
             this.lastMouseMoveTime = performance.now();
+
+            const loader = new THREE.TextureLoader();
+            loader.load('../../assets/background.png', (t)=> {
+                t.encoding = THREE.sRGBEncoding;
+                t.anisotropy = this.renderer.capabilities.getMaxAnisotropy;
+                this.scene.background = t
+            })
         });
         
         canvas.addEventListener('pointermove', (e) => {
@@ -107,7 +114,7 @@ export default class App{
                 const recentVelocities = this.mouseMoveHistory.slice(-5);
                 const avgVelocity = recentVelocities.reduce((sum, v) => sum + v.velocity, 0) / 5;
                 
-                if (avgVelocity > 3) {
+                if (avgVelocity > 2) {
                     this.onShake();
                     this.mouseMoveHistory = [];
                 }
