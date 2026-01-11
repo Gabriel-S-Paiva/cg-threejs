@@ -52,10 +52,10 @@ export default class Shell extends THREE.Group{
         
         const innerMaterials = [
             new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 }),
-            new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 }),
+            new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8}),
             new THREE.MeshPhysicalMaterial({ map: ceilingTexture, side: THREE.BackSide, roughness: 0.8 }),
             new THREE.MeshPhysicalMaterial({ map: floorTexture, side: THREE.BackSide, roughness: 0.8 }),
-            new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 }),
+            null,
             new THREE.MeshPhysicalMaterial({ map: wallTexture, side: THREE.BackSide, roughness: 0.8 })
         ];
         

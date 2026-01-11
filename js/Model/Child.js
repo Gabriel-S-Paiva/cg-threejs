@@ -35,6 +35,11 @@ export default class Child extends THREE.Group {
         this.ragdollTimeout = null;
         
         this.foodObject = null;
+        
+        this.isControlled = false;
+        this.characterBody = null;
+        this.yaw = 0;
+        this.pitch = 0;
     }
 
     initMesh() {
@@ -135,6 +140,33 @@ export default class Child extends THREE.Group {
         this.add(this.body);
     }
 
+    removeCharacterBody() {
+        if (this.characterBody && this.physicsWorld) {
+            this.physicsWorld.removeRigidBody(this.characterBody);
+        }
+        this.characterBody = null;
+    }
+
+    createCharacterBody() {
+        if (!this.physicsWorld || this.characterBody || this.isRagdoll) return;
+
+        const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
+            .setTranslation(this.position.x, this.position.y, this.position.z)
+            .setLinearDamping(2.0)
+            .lockRotations();
+         
+        this.characterBody = this.physicsWorld.createRigidBody(rigidBodyDesc);
+         
+        // Capsule collider: height 4 roughly on Y axis. Radius ~1.
+        // Capsule center at Y=2.
+        const colliderDesc = RAPIER.ColliderDesc.capsule(1.5, 1.0)
+            .setTranslation(0, -1, -2.5)
+            .setFriction(0.2)
+            .setRestitution(0.0);
+            
+        this.physicsWorld.createCollider(colliderDesc, this.characterBody);
+    }
+
     setPhysicsWorld(world) {
         this.physicsWorld = world;
     }
@@ -178,6 +210,9 @@ export default class Child extends THREE.Group {
 
     enterRagdoll() {
         if (this.isRagdoll || !this.physicsWorld) return;
+
+        // Remove controlled body
+        this.removeCharacterBody();
         
         this.isRagdoll = true;
         this.previousState = this.state;
@@ -208,6 +243,7 @@ export default class Child extends THREE.Group {
         this.rotation.x = 0;
         this.rotation.z = 0;
         
+        this.createCharacterBody();
         this.setState('idle');
     }
 
@@ -834,15 +870,12 @@ export default class Child extends THREE.Group {
             const getUpT = Math.min(getUpElapsed / getUpDuration, 1);
             
             if (getUpT < 1) {
-                // Stand up with smooth ease
                 const standEase = getUpT < 0.5 ? 2 * getUpT * getUpT : 1 - Math.pow(-2 * getUpT + 2, 2) / 2;
                 
-                // Jump down from chair to ground (land in front of chair)
                 const landPos = new THREE.Vector3(1, 0, -1.5);
                 this.currentPosition.lerp(landPos, standEase);
                 this.position.copy(this.currentPosition);
                 
-                // Legs straightening from sitting position
                 this.leftLeg.rotation.x = THREE.MathUtils.lerp(-Math.PI / 2, 0, standEase);
                 this.leftLeg.position.y = THREE.MathUtils.lerp(0.75, -0.5, standEase);
                 this.leftLeg.position.z = THREE.MathUtils.lerp(1.75, 0, standEase);
@@ -850,30 +883,52 @@ export default class Child extends THREE.Group {
                 this.rightLeg.position.y = THREE.MathUtils.lerp(0.75, -0.5, standEase);
                 this.rightLeg.position.z = THREE.MathUtils.lerp(1.75, 0, standEase);
                 
-                // Body lowering from sitting height to ground
                 this.body.position.y = THREE.MathUtils.lerp(1.6, 0, standEase);
                 this.body.rotation.y = THREE.MathUtils.lerp(-Math.PI / 4, 0, standEase);
                 
-                // Arms back to neutral (from sitting hand positions)
                 this.leftHand.position.set(2, THREE.MathUtils.lerp(1.8, 2, standEase), THREE.MathUtils.lerp(0.5, 0, standEase));
                 this.rightHand.position.set(-1.5, THREE.MathUtils.lerp(1.8, 2, standEase), THREE.MathUtils.lerp(1.3, 0, standEase));
                 this.leftHand.rotation.z = THREE.MathUtils.lerp(0.2, 0, standEase);
                 this.rightHand.rotation.z = THREE.MathUtils.lerp(-0.2, 0, standEase);
                 
-                // Ears perking up
                 this.leftEarPivot.rotation.z = -Math.PI / 2;
                 this.rightEarPivot.rotation.z = -Math.PI / 2;
                 
-                // Head returning to neutral
                 this.head.rotation.x = THREE.MathUtils.lerp(0.05, 0, standEase);
                 
             } else {
-                // Stand complete - transition to idle
                 this.isGettingUp = false;
                 this.getUpStartTime = null;
                 this.setState('idle');
             }
         }
+    }
+
+    getHeadPosition() {
+        const pos = new THREE.Vector3();
+        if (this.head) {
+            this.head.getWorldPosition(pos);
+        } else {
+            this.getWorldPosition(pos);
+            pos.y += 4;
+        }
+        return pos;
+    }
+    
+    updateControlled(dt, inputVector, cameraRotation) {
+        if (!this.characterBody) return;
+
+        const speed = 10.0;
+                
+        const velocity = new THREE.Vector3(inputVector.x, 0, inputVector.y);
+        velocity.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
+        velocity.normalize().multiplyScalar(speed);
+        
+        const currentVel = this.characterBody.linvel();
+        this.characterBody.setLinvel({ x: velocity.x, y: currentVel.y, z: velocity.z }, true);
+        
+        
+        this.rotation.y = cameraRotation;
     }
 
     update() {
@@ -895,6 +950,29 @@ export default class Child extends THREE.Group {
         if (this.isRagdoll) {
             this.updateRagdoll();
             return;
+        }
+
+        if (this.isControlled) {
+            if (this.physicsWorld && !this.characterBody) {
+                this.createCharacterBody();
+            }
+        } else {
+            if (this.characterBody) {
+                this.removeCharacterBody();
+            }
+        }
+        
+        if (this.characterBody) {
+            const t = this.characterBody.translation();
+            const r = this.characterBody.rotation();
+            this.position.set(t.x, t.y, t.z);
+            if (!this.isControlled) {
+                this.quaternion.set(r.x, r.y, r.z, r.w);
+            }
+        }
+
+        if (this.isControlled) {
+             return; 
         }
 
         switch (this.state) {
