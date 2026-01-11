@@ -10,9 +10,110 @@
             margin: 0;
             overflow: hidden;
         }
+        /* Help button */
+        .help-btn {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(4px);
+            border: 3px dashed rgba(255,255,255,0.6);
+            color: white;
+            font-size: 24px;
+            line-height: 42px;
+            text-align: center;
+            cursor: pointer;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .help-btn:focus { outline: none; box-shadow: 0 0 0 4px rgba(255,255,255,0.06); }
+
+        /* Modal overlay and box */
+        .help-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            display: none; /* hidden by default - controlled by CSS class */
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        .help-overlay.open {
+            display: flex;
+        }
+        .help-modal {
+            width: min(720px, 90vw);
+            max-height: 80vh;
+            overflow: auto;
+            background: rgba(10,10,10,0.75);
+            color: #fff;
+            border: 4px dashed rgba(255,255,255,0.7);
+            border-radius: 12px;
+            padding: 20px 22px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial;
+        }
+        .help-modal h2 { margin-top: 0; margin-bottom: 8px; }
+        .help-modal p { margin: 8px 0; line-height: 1.4; }
+        .help-close {
+            margin-top: 12px;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            border: 2px solid rgba(255,255,255,0.5);
+            border-radius: 8px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
+    <!-- Help button (circular, translucent, heavy dashed border) -->
+    <button id="helpBtn" class="help-btn" aria-haspopup="dialog" aria-controls="helpModal">?</button>
+
+    <!-- Help modal overlay (hidden by default via CSS) -->
+    <div id="helpOverlay" class="help-overlay">
+        <div id="helpModal" class="help-modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+            <h2 id="helpTitle">Controls & Camera Modes</h2>
+            <div class="help-content">
+                <p><strong>Mode 1 - Scene</strong>: Click and drag to rotate the scene objects. Press <strong>S</strong> to shake the scene. Use the shake action or keys for interactions.</p>
+                <p><strong>Mode 2 - First Person</strong>: Click to lock the cursor, move the mouse to look around (pointer lock). Use WASD to move the character.</p>
+                <p><strong>Mode 3 - Third Person</strong>: Click to lock the cursor, move the mouse to orbit/look behind the character. WASD moves the character relative to view.</p>
+                <p>Press <strong>1</strong>, <strong>2</strong>, or <strong>3</strong> to switch camera modes. Press <strong>Esc</strong> to unlock the cursor (when locked).</p>
+                <hr/>
+                <p><strong>Ragdoll</strong>: Shaking the scene or triggering the ragdoll action will put the pet into a physics-driven ragdoll state and the character can tumble. Ragdoll lasts briefly before recovering.</p>
+                <p><strong>The Three Buttons</strong>: The UI includes three on-screen interactive buttons (e.g. Feed, Play, Rest). Click a button to trigger the corresponding action for the pet.</p>
+                        <hr/>
+                <p><strong>Debug Mode</strong>: Press <strong>D</strong> to toggle debug overlays showing physics colliders and development helpers.</p>
+            </div>
+            <button id="helpClose" class="help-close">Close</button>
+        </div>
+    </div>
+
+    <script>
+            const helpBtn = document.getElementById('helpBtn');
+            const overlay = document.getElementById('helpOverlay');
+            const closeBtn = document.getElementById('helpClose');
+
+            function openHelp(){
+                    overlay.classList.add('open');
+                // focus first focusable element inside modal
+                closeBtn.focus();
+            }
+            function closeHelp(){
+                overlay.classList.remove('open');
+                helpBtn.focus();
+            }
+
+            helpBtn.addEventListener('click', openHelp);
+            closeBtn.addEventListener('click', closeHelp);
+            overlay.addEventListener('click', (e)=>{ if (e.target === overlay) closeHelp(); });
+            window.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && overlay.classList.contains('open')) closeHelp(); });
+    </script>
     <script type="module" src="./js/main.js"></script>
 </body>
 </html>
