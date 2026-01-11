@@ -308,36 +308,49 @@ export default class App{
             const headPos = activeChild.getHeadPosition();
             
             if (this.cameraMode === 2) {
-                // First Person: clamp pitch to avoid flipping and use YXZ order
                 const maxPitch = Math.PI / 2 - 0.05;
                 this.cameraRotationX = THREE.MathUtils.clamp(this.cameraRotationX, -maxPitch, maxPitch);
 
-                this.camera.position.copy(headPos);
+                // First-person offsets — change these to move the camera relative to the head
+                const fpX = -1.5; // +X is right
+                const fpY = 0.20; // vertical offset
+                const fpZ = -0.8; // forward/back offset (positive moves camera forward)
+                const fpOffset = new THREE.Vector3(fpX, fpY, fpZ);
+                const rotatedFp = fpOffset.clone().applyAxisAngle(new THREE.Vector3(0,1,0), this.cameraRotationY);
+                this.camera.position.copy(headPos).add(rotatedFp);
                 this.camera.rotation.order = 'YXZ';
                 this.camera.rotation.y = this.cameraRotationY;
                 this.camera.rotation.x = this.cameraRotationX;
                 this.camera.rotation.z = 0;
             } else if (this.cameraMode === 3) {
-                // Third Person: compute camera from yaw+pitch to prevent flip and X-offset
+                // Target the center of the head (Local 0, 4, 0), correcting for the pivot offset
+                // The head geometry is centered at x=0 in local space, but the pivot is at x=2
+                const headCenterLocal = new THREE.Vector3(0, 4, 0);
+                const headCenterWorld = headCenterLocal.applyMatrix4(activeChild.matrixWorld);
+
                 const maxPitch = Math.PI / 2 - 0.05;
                 const pitch = THREE.MathUtils.clamp(this.cameraRotationX, -maxPitch, maxPitch);
                 const yaw = this.cameraRotationY;
+ 
+                // Camera Positioning
+                const distance = 4.0; // Closer distance ("Lower Z" interpretation)
+                const extraHeight = 0.5; // "Higher Y" offset relative to head center
 
-                const distance = 5; // camera distance behind head
-                const upOffset = 1.5; // vertical offset above head
-
-                // Direction vector from yaw/pitch (camera forward direction)
+                // Calculate direction vector from Pitch/Yaw
                 const dir = new THREE.Vector3(
                     Math.sin(yaw) * Math.cos(pitch),
                     Math.sin(pitch),
                     Math.cos(yaw) * Math.cos(pitch)
                 );
-
-                // Place camera behind the head along that direction and apply an upward offset
-                const camPos = headPos.clone().sub(dir.multiplyScalar(distance)).add(new THREE.Vector3(0, upOffset, 0));
+ 
+                // Position camera behind the head (Head - Direction * Distance)
+                const camPos = headCenterWorld.clone().sub(dir.multiplyScalar(distance));
+                camPos.y += extraHeight; 
+                
                 this.camera.position.copy(camPos);
-                this.camera.up.set(0, 1, 0);
-                this.camera.lookAt(headPos);
+                
+                // Look strictly at the center of the head mesh
+                this.camera.lookAt(headCenterWorld);
             }
         } else {
              // Fallback if trying to use mode 2/3 but egg not hatched

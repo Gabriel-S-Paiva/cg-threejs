@@ -544,16 +544,16 @@ export default class Child extends THREE.Group {
             const previousPosition = this.currentPosition.clone();
             this.currentPosition.lerp(this.targetPosition, dt * this.movementSpeed);
             this.currentPosition.y = 0;
-                                // play a single bite sound once per chew (detect chew index transitions)
-                                try {
-                                    const numChews = 6;
-                                    const chewIndex = Math.floor(eatT * numChews);
-                                    if (chewIndex !== this.lastChew && chewIndex < numChews) {
-                                        try { this.biteSound.currentTime = this.biteOffset; } catch(e){}
-                                        this.biteSound.play().catch(()=>{});
-                                        this.lastChew = chewIndex;
-                                    }
-                                } catch (e) {}
+            // play a single bite sound once per chew (detect chew index transitions)
+            try {
+                const numChews = 6;
+                const chewIndex = Math.floor(eatT * numChews);
+                if (chewIndex !== this.lastChew && chewIndex < numChews) {
+                    try { this.biteSound.currentTime = this.biteOffset; } catch(e){}
+                    this.biteSound.play().catch(()=>{});
+                    this.lastChew = chewIndex;
+                }
+            } catch (e) {}
         } else {
             if (this.camera) {
                 const worldPos = new THREE.Vector3();
