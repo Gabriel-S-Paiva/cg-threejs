@@ -35,6 +35,16 @@ export default class Child extends THREE.Group {
         this.ragdollTimeout = null;
         
         this.foodObject = null;
+        // one-shot pop sound for eating completion
+        this.popPlayed = false;
+        this.popSound = new Audio('../../assets/sound/pop.mp3');
+        this.popSound.volume = 0.9;
+        // bite sound settings: use a fresh Audio per chew to allow rapid successive bites
+        this.biteUrl = '../../assets/sound/bite.mp3';
+        this.biteOffset = 1.0; // seconds to skip leading silence
+        this.biteVolume = 0.9;
+        this.lastChew = -1;
+        this.activeBiteSounds = [];
         
         this.isControlled = false;
         this.characterBody = null;
@@ -182,6 +192,11 @@ export default class Child extends THREE.Group {
 
     setState(newState) {
         if (this.isRagdoll) return;
+        // reset pop flag and chew index when entering eating state
+        if (newState === 'eating') {
+            this.popPlayed = false;
+            this.lastChew = -1;
+        }
         
         if (this.state !== newState) {
             if (this.state === 'sleeping') {
@@ -529,14 +544,16 @@ export default class Child extends THREE.Group {
             const previousPosition = this.currentPosition.clone();
             this.currentPosition.lerp(this.targetPosition, dt * this.movementSpeed);
             this.currentPosition.y = 0;
-            
-            this.position.copy(this.currentPosition);
-            
-            const movementDirection = new THREE.Vector3().subVectors(this.currentPosition, previousPosition);
-            if (movementDirection.length() > 0.001) {
-                const targetAngle = Math.atan2(movementDirection.x, movementDirection.z);
-                this.rotation.y = THREE.MathUtils.lerp(this.rotation.y, targetAngle, dt * 5);
-            }
+                                // play a single bite sound once per chew (detect chew index transitions)
+                                try {
+                                    const numChews = 6;
+                                    const chewIndex = Math.floor(eatT * numChews);
+                                    if (chewIndex !== this.lastChew && chewIndex < numChews) {
+                                        try { this.biteSound.currentTime = this.biteOffset; } catch(e){}
+                                        this.biteSound.play().catch(()=>{});
+                                        this.lastChew = chewIndex;
+                                    }
+                                } catch (e) {}
         } else {
             if (this.camera) {
                 const worldPos = new THREE.Vector3();
@@ -624,6 +641,27 @@ export default class Child extends THREE.Group {
             // EATING at mouth - gentle chewing motion
             const eatT = (t - 0.35) / 0.3;
             const chewPhase = eatT * Math.PI * 6; // 6 chews
+            // play a single bite sound once per chew (create a new Audio so bites can overlap)
+            try {
+                const numChews = 6;
+                const chewIndex = Math.floor(eatT * numChews);
+                if (chewIndex !== this.lastChew && chewIndex < numChews) {
+                    const s = new Audio(this.biteUrl);
+                    s.volume = this.biteVolume;
+                    try { s.currentTime = this.biteOffset; } catch(e){}
+                    try { s.playbackRate = 1 + eatT * 0.6; } catch(e){}
+                    s.play().catch(()=>{});
+                    // track active bite sounds so we can stop them on pop/cleanup
+                    this.activeBiteSounds.push(s);
+                    const cleanupFn = () => {
+                        const i = this.activeBiteSounds.indexOf(s);
+                        if (i !== -1) this.activeBiteSounds.splice(i, 1);
+                        s.removeEventListener('ended', cleanupFn);
+                    };
+                    s.addEventListener('ended', cleanupFn);
+                    this.lastChew = chewIndex;
+                }
+            } catch (e) {}
             
             this.rightHand.position.set(
                 0.1 + Math.sin(chewPhase * 2) * 0.08,
@@ -635,8 +673,19 @@ export default class Child extends THREE.Group {
             // HEAD NODS with chewing
             this.head.rotation.x = Math.sin(chewPhase) * 0.08;
         } else {
+            // clear lastChew when leaving chewing phase and stop any active bite sounds
+            this.lastChew = -1;
+            if (this.activeBiteSounds.length) {
+                this.activeBiteSounds.forEach(s => { try { s.pause(); s.currentTime = 0; } catch(e){} });
+                this.activeBiteSounds.length = 0;
+            }
             if (this.foodObject) {
                 this.rightHand.remove(this.foodObject);
+                if (!this.popPlayed) {
+                    try { this.popSound.currentTime = 0; } catch(e){}
+                    this.popSound.play().catch(()=>{});
+                    this.popPlayed = true;
+                }
                 this.foodObject = null;
             }
             // RETURN - single smooth motion back
@@ -648,10 +697,7 @@ export default class Child extends THREE.Group {
                 2,
                 1.5 * (1 - eased)
             );
-            this.rightHand.rotation.z = 0.2 - 0.4 * eased;
-            
-            // Remove food object near end
-            
+            this.rightHand.rotation.z = 0.2 - 0.4 * eased;            
         }
 
         // LEFT HAND - supportive gentle motion
@@ -673,6 +719,12 @@ export default class Child extends THREE.Group {
             if (this.foodObject) {
                 this.rightHand.remove(this.foodObject);
                 this.foodObject = null;
+            }
+            // reset chew index and stop any active bite sounds when eating ends
+            this.lastChew = -1;
+            if (this.activeBiteSounds.length) {
+                this.activeBiteSounds.forEach(s => { try { s.pause(); s.currentTime = 0; } catch(e){} });
+                this.activeBiteSounds.length = 0;
             }
             this.setState('idle');
         }
@@ -897,8 +949,20 @@ export default class Child extends THREE.Group {
                 this.head.rotation.x = THREE.MathUtils.lerp(0.05, 0, standEase);
                 
             } else {
+                // finalize standing pose & ensure idle movement resumes
+                this.currentPosition.set(1, 0, -1.5);
+                this.position.copy(this.currentPosition);
+                this.targetPosition.copy(this.currentPosition);
+                this.body.position.y = 0;
+                // restore leg transforms to defaults (match initMesh)
+                this.leftLeg.position.set(0.8, -0.5, 0);
+                this.rightLeg.position.set(-0.8, -0.5, 0);
+                this.leftLeg.rotation.x = 0;
+                this.rightLeg.rotation.x = 0;
                 this.isGettingUp = false;
                 this.getUpStartTime = null;
+                // reset timers so the idle movement logic will pick a new target soon
+                this.resetTimer();
                 this.setState('idle');
             }
         }

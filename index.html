@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tamagoshi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
     <style>
         body {
             /* set margin to 0 and overflow to hidden, to use the complete page */
@@ -32,6 +33,28 @@
             justify-content: center;
         }
         .help-btn:focus { outline: none; box-shadow: 0 0 0 4px rgba(255,255,255,0.06); }
+
+        .audio-btn {
+            position: fixed;
+            right: 20px;
+            bottom: 86px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(4px);
+            border: 3px dashed rgba(255,255,255,0.6);
+            color: white;
+            font-size: 24px;
+            line-height: 42px;
+            text-align: center;
+            cursor: pointer;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .audio-btn .material-symbols-outlined { font-size: 22px; }
 
         /* Modal overlay and box */
         .help-overlay {
@@ -73,6 +96,9 @@
 </head>
 <body>
     <!-- Help button (circular, translucent, heavy dashed border) -->
+    <button id="muteBtn" class="help-btn audio-btn" aria-pressed="false" aria-label="Mute soundtrack">
+        <span class="material-symbols-outlined">volume_up</span>
+    </button>
     <button id="helpBtn" class="help-btn" aria-haspopup="dialog" aria-controls="helpModal">?</button>
 
     <!-- Help modal overlay (hidden by default via CSS) -->
