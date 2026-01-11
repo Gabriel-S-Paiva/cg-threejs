@@ -161,20 +161,6 @@ export default class App{
 
         this.lastAcceleration = new THREE.Vector3();
         this.shakeThreshold = 15;
-        window.addEventListener('devicemotion', (e) => {
-            if (e.accelerationIncludingGravity) {
-                const accel = new THREE.Vector3(
-                    e.accelerationIncludingGravity.x || 0,
-                    e.accelerationIncludingGravity.y || 0,
-                    e.accelerationIncludingGravity.z || 0
-                );
-                const delta = accel.distanceTo(this.lastAcceleration);
-                if (delta > this.shakeThreshold) {
-                    this.onShake();
-                }
-                this.lastAcceleration.copy(accel);
-            }
-        });
         
         window.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
