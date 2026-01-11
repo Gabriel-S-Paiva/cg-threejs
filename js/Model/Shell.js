@@ -198,6 +198,15 @@ export default class Shell extends THREE.Group{
         if (this.chandelier && this.chandelier.setPhysicsWorld) {
             this.chandelier.setPhysicsWorld(world);
         }
+        if (this.table && this.table.setPhysicsWorld) {
+            this.table.setPhysicsWorld(world);
+        }
+        if (this.tedy && this.tedy.setPhysicsWorld) {
+            this.tedy.setPhysicsWorld(world);
+        }
+        if (this.pc && this.pc.setPhysicsWorld) {
+            this.pc.setPhysicsWorld(world);
+        }
         
         this.createBoundaryWalls();
     }

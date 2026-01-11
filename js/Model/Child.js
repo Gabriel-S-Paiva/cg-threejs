@@ -500,7 +500,14 @@ export default class Child extends THREE.Group {
         }
 
         if (!this.isLookingAtCamera) {
-            this.nextMoveTime -= dt;
+            const distToTarget = this.currentPosition.distanceTo(new THREE.Vector3(this.targetPosition.x, 0, this.targetPosition.z));
+            const isMoving = distToTarget > 0.1;
+
+            if (!isMoving) {
+                 // Countdown to next move only when standing still
+                 this.nextMoveTime -= dt;
+            }
+
             if (this.nextMoveTime <= 0) {
                 let attempts = 0;
                 let found = false;
@@ -537,23 +544,65 @@ export default class Child extends THREE.Group {
                     }
                     attempts++;
                 }
-
-                this.nextMoveTime = Math.random() * 3 + 2;
+                
+                // If found a target, reset timer for the pause AFTER we arrive
+                if(found) this.nextMoveTime = Math.random() * 3 + 2;
             }
 
-            const previousPosition = this.currentPosition.clone();
-            this.currentPosition.lerp(this.targetPosition, dt * this.movementSpeed);
-            this.currentPosition.y = 0;
-            // play a single bite sound once per chew (detect chew index transitions)
-            try {
-                const numChews = 6;
-                const chewIndex = Math.floor(eatT * numChews);
-                if (chewIndex !== this.lastChew && chewIndex < numChews) {
-                    try { this.biteSound.currentTime = this.biteOffset; } catch(e){}
-                    this.biteSound.play().catch(()=>{});
-                    this.lastChew = chewIndex;
-                }
-            } catch (e) {}
+            // LINEAR MOVEMENT
+            if (isMoving) {
+                const moveSpeed = 2.0; // Units per second
+                const step = moveSpeed * dt;
+                const dir = new THREE.Vector3().subVectors(this.targetPosition, this.currentPosition).normalize();
+                
+                // Only move x/z to keep y at 0
+                dir.y = 0; 
+                if (dir.lengthSq() > 0) dir.normalize();
+
+                const moveVec = dir.multiplyScalar(Math.min(distToTarget, step));
+                this.currentPosition.add(moveVec);
+                this.position.copy(this.currentPosition);
+                
+                // Rotate to face movement
+                const targetAngle = Math.atan2(dir.x, dir.z);
+                // Rotate smoothly
+                const rotDiff = targetAngle - this.rotation.y;
+                // Normalize angle to -PI..PI
+                let angle = rotDiff;
+                while (angle > Math.PI) angle -= Math.PI*2;
+                while (angle < -Math.PI) angle += Math.PI*2;
+                this.rotation.y += angle * dt * 5.0; 
+                
+                // WALKING ANIMATION
+                const walkPhase = now * Math.PI * 4 * 1.5; // Fixed speed walking
+                this.leftLeg.rotation.x = Math.sin(walkPhase) * 0.5;
+                this.rightLeg.rotation.x = Math.sin(walkPhase + Math.PI) * 0.5;
+                
+                // Bob body
+                this.body.position.y = Math.abs(Math.sin(walkPhase)) * 0.1;
+
+                // Arm Swing
+                const armPrimary = now * 2 * Math.PI / 1.5;
+                const armBounce = walkPhase * 0.5;
+                this.leftHand.position.y = 2 + Math.sin(armPrimary) * 0.15 + Math.abs(Math.sin(armBounce)) * 0.1;
+                this.leftHand.rotation.z = Math.sin(armPrimary) * 0.25;
+                this.rightHand.position.y = 2 + Math.sin(armPrimary + 1.2) * 0.15 + Math.abs(Math.sin(armBounce + Math.PI)) * 0.1;
+                this.rightHand.rotation.z = Math.sin(armPrimary + 1.2) * 0.25;
+            } else {
+                // Standing still animation (breathing/idle)
+                // Legs reset
+                this.leftLeg.rotation.x = THREE.MathUtils.lerp(this.leftLeg.rotation.x, 0, dt * 5);
+                this.rightLeg.rotation.x = THREE.MathUtils.lerp(this.rightLeg.rotation.x, 0, dt * 5);
+                
+                // Arms idle
+                const armPrimary = now * 2 * Math.PI / 1.5;
+                this.leftHand.position.y = 2 + Math.sin(armPrimary) * 0.15;
+                this.leftHand.rotation.z = Math.sin(armPrimary) * 0.25;
+                this.rightHand.position.y = 2 + Math.sin(armPrimary + 1.2) * 0.15;
+                this.rightHand.rotation.z = Math.sin(armPrimary + 1.2) * 0.25;
+            }
+
+            this.currentPosition.y = 0; // Ensure floor
         } else {
             if (this.camera) {
                 const worldPos = new THREE.Vector3();
@@ -562,30 +611,7 @@ export default class Child extends THREE.Group {
                 const targetAngle = Math.atan2(cameraDirection.x, cameraDirection.z);
                 this.rotation.y = THREE.MathUtils.lerp(this.rotation.y, targetAngle, dt * 3);
             }
-        }
-
-        if (!this.isLookingAtCamera) {
-            // WALKING ANIMATION - organic leg motion
-            const walkSpeed = this.currentPosition.distanceTo(this.targetPosition) * 2;
-            const walkPhase = now * Math.PI * 4 * Math.max(walkSpeed, 0.5);
             
-            // Legs swing with slight offset for natural gait
-            this.leftLeg.rotation.x = Math.sin(walkPhase) * 0.12;
-            this.rightLeg.rotation.x = Math.sin(walkPhase + Math.PI) * 0.12;
-
-            // ARM MOTION - relaxed sway while walking
-            // Primary sway: 1.5-second cycle
-            const armPrimary = now * 2 * Math.PI / 1.5;
-            // Secondary bounce from walking
-            const armBounce = walkPhase * 0.5;
-            
-            // Asymmetric arm swing
-            this.leftHand.position.y = 2 + Math.sin(armPrimary) * 0.15 + Math.abs(Math.sin(armBounce)) * 0.08;
-            this.leftHand.rotation.z = Math.sin(armPrimary) * 0.25;
-            
-            this.rightHand.position.y = 2 + Math.sin(armPrimary + 1.2) * 0.15 + Math.abs(Math.sin(armBounce + Math.PI)) * 0.08;
-            this.rightHand.rotation.z = Math.sin(armPrimary + 1.2) * 0.25;
-        } else {
             // LOOKING AT CAMERA - curious pose with subtle life
             const curiousPhase = now * 2 * Math.PI / 3;
             
@@ -983,6 +1009,7 @@ export default class Child extends THREE.Group {
         if (!this.characterBody) return;
 
         const speed = 10.0;
+        const isMoving = inputVector.x !== 0 || inputVector.y !== 0;
                 
         const velocity = new THREE.Vector3(inputVector.x, 0, inputVector.y);
         velocity.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
@@ -993,6 +1020,43 @@ export default class Child extends THREE.Group {
         
         
         this.rotation.y = cameraRotation;
+
+        // ANIMATION (3rd Person / Controlled Walking)
+        const now = performance.now() / 1000;
+        if (isMoving) {
+             const walkSpeed = 1.0; 
+             const walkPhase = now * Math.PI * 4 * walkSpeed;
+            
+             // Pronounced leg swing
+             this.leftLeg.rotation.x = Math.sin(walkPhase) * 0.5; 
+             this.rightLeg.rotation.x = Math.sin(walkPhase + Math.PI) * 0.5;
+             
+             // Body bob
+             this.body.position.y = Math.abs(Math.sin(walkPhase)) * 0.1;
+
+             // Arm Swing
+             const armPrimary = now * 2 * Math.PI / 1.5;
+             const armBounce = walkPhase * 0.5;
+             
+             this.leftHand.position.y = 2 + Math.sin(armPrimary) * 0.15 + Math.abs(Math.sin(armBounce)) * 0.2;
+             this.rightHand.position.y = 2 + Math.sin(armPrimary + 1.2) * 0.15 + Math.abs(Math.sin(armBounce + Math.PI)) * 0.2;
+             
+             // Subtle forward lean?
+             // this.body.rotation.x = 0.1; 
+        } else {
+             // Reset pose
+             this.leftLeg.rotation.x = THREE.MathUtils.lerp(this.leftLeg.rotation.x, 0, dt * 10);
+             this.rightLeg.rotation.x = THREE.MathUtils.lerp(this.rightLeg.rotation.x, 0, dt * 10);
+             
+             // Breathing in idle
+             const breathPhase = now * 2 * Math.PI / 5;
+             this.body.position.y = Math.sin(breathPhase) * 0.02;
+
+             // Gentle idle arms
+             const armPrimary = now * 2 * Math.PI / 1.5;
+             this.leftHand.position.y = 2 + Math.sin(armPrimary) * 0.15;
+             this.rightHand.position.y = 2 + Math.sin(armPrimary + 1.2) * 0.15;
+        }
     }
 
     update() {
