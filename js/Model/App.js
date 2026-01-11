@@ -217,7 +217,7 @@ export default class App{
         this.micSource = null;
         this.mediaRecorder = null;
         this.recordingChunks = [];
-        this.micThreshold = 0.12; // RMS threshold to trigger recording
+        this.micThreshold = 0.06; // RMS threshold to trigger recording
         this.minTriggerInterval = 1200; // ms between triggers
         this._lastTrigger = 0;
         this.micTarget = null; // target object to receive mic events (e.g., Child instance)
