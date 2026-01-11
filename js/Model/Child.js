@@ -707,8 +707,8 @@ export default class Child extends THREE.Group {
         const t = Math.min(this.stateTime / transitionTime, 1);
         
         // Chair position - stop before chair to jump
-        const approachPos = new THREE.Vector3(2.5, 0, -2.8); // Stop 0.8 units before chair
-        const chairPos = new THREE.Vector3(2.5, 0.6, -3.6); // Higher Y to sit on chair
+        const approachPos = new THREE.Vector3(1, 0, -1.5); // Stop 0.8 units before chair
+        const chairPos = new THREE.Vector3(2.3, 0.6, -3.1); // Correct sitting position
         
         // PHASE 1: WALK TO APPROACH POSITION
         if (this.stateTime < walkTime) {
@@ -729,7 +729,8 @@ export default class Child extends THREE.Group {
             this.rightLeg.rotation.x = Math.sin(walkPhase + Math.PI) * 0.12;
             
             this.body.position.y = 0;
-            
+            this.body.rotation.y = THREE.MathUtils.lerp(0, -Math.PI / 4, walkT);
+        
         // PHASE 2: JUMP ONTO CHAIR
         } else if (this.stateTime < transitionTime) {
             const jumpT = (this.stateTime - walkTime) / jumpTime;
@@ -742,7 +743,7 @@ export default class Child extends THREE.Group {
             this.position.copy(this.currentPosition);
             
             // Jump arc
-            const jumpArc = Math.sin(jumpT * Math.PI) * 0.8;
+            const jumpArc = Math.sin(jumpT * Math.PI) + 1.6;
             this.body.position.y = jumpArc;
             
             // Legs tuck during jump
@@ -763,16 +764,22 @@ export default class Child extends THREE.Group {
             this.currentPosition.copy(chairPos);
             this.position.copy(this.currentPosition);
             
-            // Settle body height
-            this.body.position.y = THREE.MathUtils.lerp(0.8, 0.6, settleEase);
+            // Settle body height to sitting position (1.6 to match sitting pose)
+            this.body.position.y = THREE.MathUtils.lerp(0.8, 1.6, settleEase);
             
-            // Legs into sitting position
-            this.leftLeg.rotation.x = THREE.MathUtils.lerp(0.6, 0.85, settleEase);
-            this.rightLeg.rotation.x = THREE.MathUtils.lerp(0.6, 0.85, settleEase);
+            // Legs into sitting position (match final sitting pose)
+            this.leftLeg.rotation.x = THREE.MathUtils.lerp(0.6, -Math.PI / 2, settleEase);
+            this.leftLeg.position.y = THREE.MathUtils.lerp(0, 0.75, settleEase);
+            this.leftLeg.position.z = THREE.MathUtils.lerp(0, 1.75, settleEase);
+            this.rightLeg.rotation.x = THREE.MathUtils.lerp(0.6, -Math.PI / 2, settleEase);
+            this.rightLeg.position.y = THREE.MathUtils.lerp(0, 0.75, settleEase);
+            this.rightLeg.position.z = THREE.MathUtils.lerp(0, 1.75, settleEase);
             
-            // Arms back down
-            this.leftHand.position.y = THREE.MathUtils.lerp(2.8, 1.2, settleEase);
-            this.rightHand.position.y = THREE.MathUtils.lerp(2.8, 1.2, settleEase);
+            // Arms back down to sitting position
+            this.leftHand.position.y = THREE.MathUtils.lerp(2.8, 1.8, settleEase);
+            this.leftHand.position.z = THREE.MathUtils.lerp(0, 0.5, settleEase);
+            this.rightHand.position.y = THREE.MathUtils.lerp(2.8, 1.8, settleEase);
+            this.rightHand.position.z = THREE.MathUtils.lerp(0, 1.3, settleEase);
         }
         
         // SITTING POSE
@@ -780,18 +787,23 @@ export default class Child extends THREE.Group {
             const sitTime = this.stateTime - transitionTime - 0.5;
             
             // Ensure on chair position
-            const chairPos = new THREE.Vector3(2.5, 0.6, -3.6);
+            const chairPos = new THREE.Vector3(2.3, 0.6, -3.1);
             this.currentPosition.copy(chairPos);
             this.position.copy(this.currentPosition);
             
             // Legs in sitting position
-            this.leftLeg.rotation.x = 0.85;
-            this.rightLeg.rotation.x = 0.85;
+            this.leftLeg.rotation.x = - Math.PI / 2
+            this.leftLeg.position.y =  0.75
+            this.leftLeg.position.z = 1.75
+            this.rightLeg.rotation.x = - Math.PI / 2
+            this.rightLeg.position.y =  0.75
+            this.rightLeg.position.z = 1.75
             
             // BREATHING - gentle resting breathing (6-second cycle)
             const breathCycle = sitTime * 2 * Math.PI / 6;
             const breathAmp = 0.04; // Subtle
-            this.body.position.y = 0.6 + Math.sin(breathCycle) * breathAmp;
+            this.body.position.y = 1.6 + Math.sin(breathCycle) * breathAmp;
+            this.body.rotation.y = -Math.PI / 4
             
             // HEAD - occasional look around (relaxed)
             const lookPhase = sitTime * 2 * Math.PI / 8;
@@ -803,11 +815,8 @@ export default class Child extends THREE.Group {
             this.rightEarPivot.rotation.z = -Math.PI / 2 + Math.sin(earRelax + 0.5) * 0.05;
             
             // HANDS - resting on lap/sides
-            const handRelax = sitTime * 2 * Math.PI / 5;
-            this.leftHand.position.set(2, 1.2 + Math.sin(handRelax) * 0.03, 0.3);
-            this.rightHand.position.set(-2, 1.2 + Math.sin(handRelax + 1) * 0.03, 0.3);
-            this.leftHand.rotation.z = 0.2 + Math.sin(handRelax) * 0.05;
-            this.rightHand.rotation.z = -0.2 + Math.sin(handRelax + 1) * 0.05;
+            this.leftHand.position.set(1.7, 1.8, 0.8);
+            this.rightHand.position.set(-1.7, 1.8 , 1.3);
         }
         
         // GETTING UP - check if should stand
@@ -828,21 +837,26 @@ export default class Child extends THREE.Group {
                 // Stand up with smooth ease
                 const standEase = getUpT < 0.5 ? 2 * getUpT * getUpT : 1 - Math.pow(-2 * getUpT + 2, 2) / 2;
                 
-                // Move back to center
-                const returnPos = new THREE.Vector3(0, 0, 0);
-                this.currentPosition.lerp(returnPos, standEase);
+                // Jump down from chair to ground (land in front of chair)
+                const landPos = new THREE.Vector3(1, 0, -1.5);
+                this.currentPosition.lerp(landPos, standEase);
                 this.position.copy(this.currentPosition);
                 
-                // Legs straightening
-                this.leftLeg.rotation.x = THREE.MathUtils.lerp(0.85, 0, standEase);
-                this.rightLeg.rotation.x = THREE.MathUtils.lerp(0.85, 0, standEase);
+                // Legs straightening from sitting position
+                this.leftLeg.rotation.x = THREE.MathUtils.lerp(-Math.PI / 2, 0, standEase);
+                this.leftLeg.position.y = THREE.MathUtils.lerp(0.75, -0.5, standEase);
+                this.leftLeg.position.z = THREE.MathUtils.lerp(1.75, 0, standEase);
+                this.rightLeg.rotation.x = THREE.MathUtils.lerp(-Math.PI / 2, 0, standEase);
+                this.rightLeg.position.y = THREE.MathUtils.lerp(0.75, -0.5, standEase);
+                this.rightLeg.position.z = THREE.MathUtils.lerp(1.75, 0, standEase);
                 
-                // Body lowering from chair height to ground
-                this.body.position.y = THREE.MathUtils.lerp(0.6, 0, standEase);
+                // Body lowering from sitting height to ground
+                this.body.position.y = THREE.MathUtils.lerp(1.6, 0, standEase);
+                this.body.rotation.y = THREE.MathUtils.lerp(-Math.PI / 4, 0, standEase);
                 
-                // Arms back to neutral
-                this.leftHand.position.set(2, THREE.MathUtils.lerp(1.2, 2, standEase), THREE.MathUtils.lerp(0.3, 0, standEase));
-                this.rightHand.position.set(-2, THREE.MathUtils.lerp(1.2, 2, standEase), THREE.MathUtils.lerp(0.3, 0, standEase));
+                // Arms back to neutral (from sitting hand positions)
+                this.leftHand.position.set(2, THREE.MathUtils.lerp(1.8, 2, standEase), THREE.MathUtils.lerp(0.5, 0, standEase));
+                this.rightHand.position.set(-1.5, THREE.MathUtils.lerp(1.8, 2, standEase), THREE.MathUtils.lerp(1.3, 0, standEase));
                 this.leftHand.rotation.z = THREE.MathUtils.lerp(0.2, 0, standEase);
                 this.rightHand.rotation.z = THREE.MathUtils.lerp(-0.2, 0, standEase);
                 
