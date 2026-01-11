@@ -1005,6 +1005,24 @@ export default class Child extends THREE.Group {
         return pos;
     }
     
+    // Called by App when a short mic recording is available
+    async onMicAudio(blob) {
+        try {
+            if (!this._audioContext) this._audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const arrayBuffer = await blob.arrayBuffer();
+            const audioBuffer = await this._audioContext.decodeAudioData(arrayBuffer);
+            const src = this._audioContext.createBufferSource();
+            src.buffer = audioBuffer;
+            src.playbackRate.value = 1.8; // sped-up playback
+            src.connect(this._audioContext.destination);
+            src.start();
+            // react to audio: trigger playing animation briefly
+            this.setState('playing');
+        } catch (e) {
+            console.error('onMicAudio error', e);
+        }
+    }
+    
     updateControlled(dt, inputVector, cameraRotation) {
         if (!this.characterBody) return;
 

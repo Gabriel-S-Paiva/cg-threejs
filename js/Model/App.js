@@ -223,6 +223,19 @@ export default class App{
             this.renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
+        // Microphone / voice trigger state
+        this.audioContext = null;
+        this.micEnabled = false;
+        this.micStream = null;
+        this.analyser = null;
+        this.micSource = null;
+        this.mediaRecorder = null;
+        this.recordingChunks = [];
+        this.micThreshold = 0.12; // RMS threshold to trigger recording
+        this.minTriggerInterval = 1200; // ms between triggers
+        this._lastTrigger = 0;
+        this.micTarget = null; // target object to receive mic events (e.g., Child instance)
+
         this.animate();
     }
 
@@ -235,6 +248,106 @@ export default class App{
                 object.setPhysicsWorld(this.physicsWorld);
             }
         });
+    }
+
+    // set object that should receive mic events (Child instance or Shell.pet)
+    setMicTarget(target) {
+        this.micTarget = target;
+    }
+
+    async enableMic() {
+        if (this.micEnabled) return;
+        try {
+            this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (e) {
+            console.error('Mic permission denied', e);
+            return;
+        }
+
+        if (!this.audioContext) {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        this.micSource = this.audioContext.createMediaStreamSource(this.micStream);
+        this.analyser = this.audioContext.createAnalyser();
+        this.analyser.fftSize = 2048;
+        this.analyser.smoothingTimeConstant = 0.3;
+        this.micSource.connect(this.analyser);
+
+        const data = new Float32Array(this.analyser.fftSize);
+        const check = () => {
+            if (!this.micEnabled) return;
+            this.analyser.getFloatTimeDomainData(data);
+            let sum = 0;
+            for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+            const rms = Math.sqrt(sum / data.length);
+            const now = performance.now();
+            if (rms > this.micThreshold && (now - this._lastTrigger) > this.minTriggerInterval) {
+                this._lastTrigger = now;
+                this._startShortRecording();
+            }
+            requestAnimationFrame(check);
+        };
+        this.micEnabled = true;
+        check();
+    }
+
+    disableMic() {
+        this.micEnabled = false;
+        try {
+            if (this.micStream) {
+                this.micStream.getTracks().forEach(t => t.stop());
+                this.micStream = null;
+            }
+            if (this.micSource) {
+                try { this.micSource.disconnect(); } catch(e){}
+                this.micSource = null;
+            }
+            if (this.analyser) {
+                try { this.analyser.disconnect(); } catch(e){}
+                this.analyser = null;
+            }
+        } catch(e){}
+    }
+
+    _startShortRecording(duration = 1400) {
+        if (!this.micStream) return;
+        if (this.mediaRecorder && this.mediaRecorder.state === 'recording') return;
+        try {
+            this.recordingChunks = [];
+            this.mediaRecorder = new MediaRecorder(this.micStream);
+            this.mediaRecorder.ondataavailable = (ev) => { if (ev.data && ev.data.size) this.recordingChunks.push(ev.data); };
+            this.mediaRecorder.onstop = async () => {
+                try {
+                    const blob = new Blob(this.recordingChunks, { type: this.recordingChunks[0]?.type || 'audio/webm' });
+                    if (this.micTarget) {
+                        if (typeof this.micTarget.onMicAudio === 'function') {
+                            this.micTarget.onMicAudio(blob);
+                        } else if (typeof this.micTarget.setState === 'function') {
+                            this.micTarget.setState('playing');
+                        }
+                    }
+                    try {
+                        const arrayBuffer = await blob.arrayBuffer();
+                        const ac = this.audioContext || (this.audioContext = new (window.AudioContext || window.webkitAudioContext)());
+                        const audioBuffer = await ac.decodeAudioData(arrayBuffer);
+                        const src = ac.createBufferSource();
+                        src.buffer = audioBuffer;
+                        src.playbackRate.value = 1.8;
+                        src.connect(ac.destination);
+                        src.start();
+                    } catch(e){}
+                } catch(e){ console.error(e); }
+            };
+            this.mediaRecorder.start();
+            setTimeout(()=> {
+                if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+                    this.mediaRecorder.stop();
+                }
+            }, duration);
+        } catch (e) {
+            console.error('MediaRecorder error', e);
+        }
     }
 
     onShake() {

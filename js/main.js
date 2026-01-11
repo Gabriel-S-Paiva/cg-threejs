@@ -5,6 +5,9 @@ const app = new App();
 const shell = new Shell();
 
 app.add(shell);
+// associate mic target: prefer hatched child if present, otherwise the pet object or shell
+const preferredTarget = (shell.pet && shell.pet.current_object) ? shell.pet.current_object : (shell.pet || shell);
+app.setMicTarget(preferredTarget);
 // Background soundtrack handling
 const bgSound = new Audio('../assets/sound/bg-music.mp3');
 bgSound.loop = true;
@@ -46,5 +49,25 @@ if(muteBtn){
         bgSound.muted = !bgSound.muted;
         localStorage.setItem('bgMuted', bgSound.muted);
         updateMuteButtonUI();
+    });
+}
+
+// Microphone toggle button (expects a button with id="micBtn" on the page)
+const micBtn = document.getElementById('micBtn');
+function updateMicButtonUI() {
+    if (!micBtn) return;
+    micBtn.setAttribute('aria-pressed', app.micEnabled ? 'true' : 'false');
+    const icon = micBtn.querySelector('.material-symbols-outlined');
+    if (icon) icon.textContent = app.micEnabled ? 'mic' : 'mic_off';
+}
+if (micBtn) {
+    updateMicButtonUI();
+    micBtn.addEventListener('click', async () => {
+        if (app.micEnabled) {
+            app.disableMic();
+        } else {
+            await app.enableMic();
+        }
+        updateMicButtonUI();
     });
 }

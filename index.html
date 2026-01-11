@@ -37,7 +37,7 @@
         .audio-btn {
             position: fixed;
             right: 20px;
-            bottom: 86px;
+            bottom: 80px;
             width: 48px;
             height: 48px;
             border-radius: 50%;
@@ -55,6 +55,8 @@
             justify-content: center;
         }
         .audio-btn .material-symbols-outlined { font-size: 22px; }
+
+        .mic-btn { bottom: 140px; }
 
         /* Modal overlay and box */
         .help-overlay {
@@ -96,6 +98,9 @@
 </head>
 <body>
     <!-- Help button (circular, translucent, heavy dashed border) -->
+    <button id="micBtn" class="help-btn audio-btn mic-btn" aria-pressed="false" aria-label="Toggle microphone">
+        <span class="material-symbols-outlined">mic_off</span>
+    </button>
     <button id="muteBtn" class="help-btn audio-btn" aria-pressed="false" aria-label="Mute soundtrack">
         <span class="material-symbols-outlined">volume_up</span>
     </button>
