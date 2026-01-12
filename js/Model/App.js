@@ -248,7 +248,6 @@ export default class App{
         try {
             this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         } catch (e) {
-            console.error('Mic permission denied', e);
             return;
         }
 
@@ -308,13 +307,20 @@ export default class App{
             this.mediaRecorder.onstop = async () => {
                 try {
                     const blob = new Blob(this.recordingChunks, { type: this.recordingChunks[0]?.type || 'audio/webm' });
-                    if (this.micTarget) {
-                        if (typeof this.micTarget.onMicAudio === 'function') {
-                            this.micTarget.onMicAudio(blob);
-                        } else if (typeof this.micTarget.setState === 'function') {
-                            this.micTarget.setState('playing');
+                    // Compute effective target at the moment of invocation. Prefer active hatched child
+                    try {
+                        const shell = (this.objects && this.objects[0]) ? this.objects[0] : null;
+                        const pet = shell?.pet || this.micTarget;
+                        const effectiveTarget = (pet && pet.current_object) ? pet.current_object : (this.micTarget || pet);
+                        if (effectiveTarget) {
+                            if (typeof effectiveTarget.onMicAudio === 'function') {
+                                effectiveTarget.onMicAudio(blob);
+                            } else if (typeof effectiveTarget.setState === 'function') {
+                                effectiveTarget.setState('playing');
+                            }
                         }
-                    }
+                    } catch (e) {  }
+                    
                     try {
                         const arrayBuffer = await blob.arrayBuffer();
                         const ac = this.audioContext || (this.audioContext = new (window.AudioContext || window.webkitAudioContext)());
@@ -324,8 +330,22 @@ export default class App{
                         src.playbackRate.value = 1.8;
                         src.connect(ac.destination);
                         src.start();
+                        // Notify mic target (if it supports audio-driven talking) to animate mouth
+                        try {
+                            const playbackRate = src.playbackRate?.value || 1.0;
+                            const duration = (audioBuffer?.duration || 0) / playbackRate;
+                            // Notify the live effective target (prefer hatched child)
+                            try {
+                                const shell = (this.objects && this.objects[0]) ? this.objects[0] : null;
+                                const pet = shell?.pet || this.micTarget;
+                                const effectiveTarget = (pet && pet.current_object) ? pet.current_object : (this.micTarget || pet);
+                                if (effectiveTarget && typeof effectiveTarget.startTalking === 'function') {
+                                    effectiveTarget.startTalking(duration, 6);
+                                }
+                            } catch (e) {  }
+                        } catch (e) {}
                     } catch(e){}
-                } catch(e){ console.error(e); }
+                } catch(e){ }
             };
             this.mediaRecorder.start();
             setTimeout(()=> {
@@ -333,9 +353,7 @@ export default class App{
                     this.mediaRecorder.stop();
                 }
             }, duration);
-        } catch (e) {
-            console.error('MediaRecorder error', e);
-        }
+        } catch (e) { }
     }
 
     onShake() {

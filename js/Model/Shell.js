@@ -105,9 +105,7 @@ export default class Shell extends THREE.Group{
             this.bgSphere.castShadow = false;
             this.bgSphere.receiveShadow = false;
             this.add(this.bgSphere);
-        } catch (e) {
-            console.warn('Failed to create shell background sphere:', e);
-        }
+        } catch (e) {}
         
         const windowGeometry = new RoundedBoxGeometry(10.2, 10.2, 0.2, 3);
         const windowMaterial = new THREE.MeshPhysicalMaterial({

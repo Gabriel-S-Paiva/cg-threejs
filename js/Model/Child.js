@@ -23,6 +23,9 @@ export default class Child extends THREE.Group {
         this.nextCameraLookTime = Math.random() * 20 + 15;
         this.lookAtCameraDuration = 2;
 
+        // Preload face textures for quick swaps (use available assets)
+        const _loader = new THREE.TextureLoader();
+
         this.initMesh();
 
         this.animPhase = 0;
@@ -49,7 +52,55 @@ export default class Child extends THREE.Group {
         this.isControlled = false;
         this.characterBody = null;
         this.yaw = 0;
-        this.pitch = 0;
+        // helper to configure texture mapping so all faces align the same
+        const configure = (tex) => {
+            if (!tex) return tex;
+            try {
+                tex.colorSpace = THREE.SRGBColorSpace;
+            } catch(e) {}
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(1, 1);
+            tex.offset.set(0.78, 0);
+            tex.rotation = Math.PI;
+            tex.center.set(0.5, 0.5);
+            return tex;
+        };
+
+        this.faceTextures = {
+            default: configure(_loader.load('../../assets/textures/face_happy.png')),
+            eating: configure(_loader.load('../../assets/textures/face_eating.png')),
+            // talking alternates (open/close)
+            talking_open: configure(_loader.load('../../assets/textures/face_open.png')),
+            talking_close: configure(_loader.load('../../assets/textures/face_close.png')),
+            ragdoll: configure(_loader.load('../../assets/textures/face_sad.png')),
+        };
+    }
+
+    // Start talking mouth animation for a given duration (seconds)
+    startTalking(durationSeconds, rate = 6) {
+        try {
+            this.stopTalking();
+            this.isTalkingActive = true;
+            this._talkToggle = false;
+            const period = 1000 / rate; // ms between toggles
+            this._talkInterval = setInterval(() => {
+                this._talkToggle = !this._talkToggle;
+                this.setFaceTexture(this._talkToggle ? 'talking_open' : 'talking_close');
+            }, period);
+            this._talkTimeout = setTimeout(() => this.stopTalking(), Math.max(0, durationSeconds * 1000));
+        } catch (e) {}
+    }
+
+    stopTalking() {
+        try {
+            if (this._talkInterval) { clearInterval(this._talkInterval); this._talkInterval = null; }
+            if (this._talkTimeout) { clearTimeout(this._talkTimeout); this._talkTimeout = null; }
+        } catch (e) {}
+        this.isTalkingActive = false;
+        if (this.state === 'eating') this.setFaceTexture('eating');
+        else if (this.state === 'ragdoll') this.setFaceTexture('ragdoll');
+        else this.setFaceTexture('default');
     }
 
     initMesh() {
@@ -81,20 +132,21 @@ export default class Child extends THREE.Group {
         const headPoints = headCurve.getPoints(30);
         const headGeometry = new THREE.LatheGeometry(headPoints, 24);
 
-        const texture = new THREE.TextureLoader().load('../../assets/textures/face_happy.png', () => {
+        const texture = (this.faceTextures && this.faceTextures.default) ? this.faceTextures.default : new THREE.TextureLoader().load('../../assets/textures/face_happy.png');
+        if (texture) {
             texture.colorSpace = THREE.SRGBColorSpace;
-        });
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(1, 1);
-        texture.offset.set(0.78, 0);
-        texture.rotation = Math.PI;
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(1, 1);
+            texture.offset.set(0.78, 0);
+            texture.rotation = Math.PI;
+        }
 
-        const headMaterial = new THREE.MeshPhysicalMaterial({
+        this.headMaterial = new THREE.MeshPhysicalMaterial({
             color: '#FFFFA7',
             map: texture,
         });
-        this.head = new THREE.Mesh(headGeometry, headMaterial);
+        this.head = new THREE.Mesh(headGeometry, this.headMaterial);
         this.head.rotation.z = Math.PI / 2;
         this.head.position.x = 2;
         this.head.position.y = 4;
@@ -148,6 +200,19 @@ export default class Child extends THREE.Group {
         });
 
         this.add(this.body);
+    }
+
+    setFaceTexture(name) {
+        if (!name) return;
+        try {
+            const tex = this.faceTextures && this.faceTextures[name];
+            if (tex) {
+                this.headMaterial.map = tex;
+                this.headMaterial.needsUpdate = true;
+                this.currentFace = name;
+            } else {
+            }
+        } catch (e) {}
     }
 
     removeCharacterBody() {
@@ -215,6 +280,20 @@ export default class Child extends THREE.Group {
             this.stateTime = 0;
             this.animPhase = 0;
             this.isLookingAtCamera = false;
+
+            // Update face texture depending on new state
+            try {
+                if (newState === 'eating') {
+                    this.setFaceTexture('eating');
+                } else if (newState === 'playing') {
+                    // playing should use idle/default face; audio-driven mouth toggles separately
+                    this.setFaceTexture('default');
+                } else if (newState === 'idle') {
+                    this.setFaceTexture('default');
+                } else if (newState === 'ragdoll') {
+                    this.setFaceTexture('ragdoll');
+                }
+            } catch (e) {}
             
             if (newState === 'idle') {
                 this.body.rotation.set(0, 0, 0);
@@ -232,6 +311,7 @@ export default class Child extends THREE.Group {
         this.isRagdoll = true;
         this.previousState = this.state;
         this.state = 'ragdoll';
+        try { this.setFaceTexture('ragdoll'); } catch(e) {}
         
         if (this.ragdollTimeout) clearTimeout(this.ragdollTimeout);
         
@@ -804,6 +884,15 @@ export default class Child extends THREE.Group {
             this.head.rotation.x = Math.sin(cheerPhase * 1.5) * 0.08;
         }
 
+        // If audio-driven talking is active, it controls the mouth textures.
+        if (!this.isTalkingActive) {
+            try {
+                const rate = 6; // toggles per second
+                const open = Math.floor(this.stateTime * rate) % 2 === 0;
+                this.setFaceTexture(open ? 'talking_open' : 'talking_close');
+            } catch(e) {}
+        }
+
         if (this.stateTime > totalPlayTime) {
             this.body.position.y = 0;
             this.body.rotation.x = 0;
@@ -1016,11 +1105,14 @@ export default class Child extends THREE.Group {
             src.playbackRate.value = 1.8; // sped-up playback
             src.connect(this._audioContext.destination);
             src.start();
-            // react to audio: trigger playing animation briefly
-            this.setState('playing');
-        } catch (e) {
-            console.error('onMicAudio error', e);
-        }
+            // react to audio: keep default face but animate mouth during playback
+            try {
+                this.setFaceTexture('default');
+                const duration = (audioBuffer?.duration || 0) / (src.playbackRate?.value || 1);
+                // start mouth animation tied to playback duration
+                this.startTalking(duration, 6);
+            } catch(e) {}
+        } catch (e) {}
     }
     
     updateControlled(dt, inputVector, cameraRotation) {
