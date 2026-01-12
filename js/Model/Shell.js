@@ -66,6 +66,48 @@ export default class Shell extends THREE.Group{
         innerLining.castShadow = false;
         innerLining.receiveShadow = true;
         this.add(innerLining);
+
+        // Create an inward-facing background sphere inside the shell using assets/bg.png
+        try {
+            const bgLoader = new THREE.TextureLoader();
+            const bgTex = bgLoader.load('../../assets/bg.jpg', (tex) => {
+                // correct color space
+                tex.encoding = THREE.sRGBEncoding;
+
+                // equirectangular panorama on a sphere expects no repeating
+                tex.wrapS = THREE.ClampToEdgeWrapping;
+                tex.wrapT = THREE.ClampToEdgeWrapping;
+                tex.repeat.set(1, 1);
+
+                // avoid mipmap blurring for small/low-res source; use linear filtering
+                tex.generateMipmaps = false;
+                tex.minFilter = THREE.LinearFilter;
+                tex.magFilter = THREE.LinearFilter;
+
+                // set a reasonable anisotropy (can't access renderer here reliably)
+                tex.anisotropy = 8;
+
+                tex.needsUpdate = true;
+            });
+
+            // Larger radius and higher segments for smoother mapping
+            const bgRadius = 60;
+            const bgGeo = new THREE.SphereGeometry(bgRadius, 128, 64);
+            const bgMat = new THREE.MeshBasicMaterial({
+                map: bgTex,
+                side: THREE.BackSide,
+                toneMapped: false // prevent renderer tone mapping from altering the image
+            });
+            this.bgSphere = new THREE.Mesh(bgGeo, bgMat);
+            // Position sphere to match the inner lining center
+            this.bgSphere.position.set(0, 1.8, -2.8);
+            this.bgSphere.rotation.y = Math.PI; // orient texture nicely
+            this.bgSphere.castShadow = false;
+            this.bgSphere.receiveShadow = false;
+            this.add(this.bgSphere);
+        } catch (e) {
+            console.warn('Failed to create shell background sphere:', e);
+        }
         
         const windowGeometry = new RoundedBoxGeometry(10.2, 10.2, 0.2, 3);
         const windowMaterial = new THREE.MeshPhysicalMaterial({
@@ -149,7 +191,7 @@ export default class Shell extends THREE.Group{
         })
         this.add(this.pet)
         
-        this.chair = new Object();
+        this.chair = new Object('../../assets/models/sofachair-v1.glb');
         this.chair.position.set(2.5, -3.2, -6);
         this.chair.rotation.y = - Math.PI / 8
         this.chair.scale.set(0.015, 0.015, 0.015);

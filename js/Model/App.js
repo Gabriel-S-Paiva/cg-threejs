@@ -91,13 +91,6 @@ export default class App{
             this.previousMousePosition = { x: e.clientX, y: e.clientY };
             this.mouseMoveHistory = [];
             this.lastMouseMoveTime = performance.now();
-
-            const loader = new THREE.TextureLoader();
-            loader.load('../../assets/background.png', (t)=> {
-                t.encoding = THREE.sRGBEncoding;
-                t.anisotropy = this.renderer.capabilities.getMaxAnisotropy;
-                this.scene.background = t
-            })
         });
         
         canvas.addEventListener('pointermove', (e) => {
@@ -169,23 +162,22 @@ export default class App{
             if (key === '3') this.cameraMode = 3;
 
             if (this.cameraMode === 2) {
-                if (key === 'w') this.moveInput.y = -1; // In 3D, usually -Z is forward
+                if (key === 'w') this.moveInput.y = -1;
                 if (key === 's') this.moveInput.y = 1; 
                 if (key === 'a') this.moveInput.x = -1;
                 if (key === 'd') this.moveInput.x = 1;
             }
             if (this.cameraMode === 3) {
-                if (key === 'w') this.moveInput.y = 1; // In 3D, usually -Z is forward
+                if (key === 'w') this.moveInput.y = 1;
                 if (key === 's') this.moveInput.y = -1; 
                 if (key === 'a') this.moveInput.x = 1;
                 if (key === 'd') this.moveInput.x = -1;
             }
 
             if (e.key === 's' || e.key === 'S') {
-                if (this.cameraMode === 1) this.onShake(); // Only shake in Scene mode? Or always? Prompt says "behaviour: ... on shake". Implies Scene Camera behavior.
+                if (this.cameraMode === 1) this.onShake();
             }
             if (e.key === 'd' || e.key === 'D') {
-                // Conflict with WASD 'd'
                 if (this.cameraMode === 1) {
                     this.debugEnabled = !this.debugEnabled;
                     if (!this.debugEnabled && this.lines) {
@@ -359,6 +351,8 @@ export default class App{
             object.setCamera(this.camera);
         }
     }
+
+    
 
     animate = () => {
         requestAnimationFrame(this.animate);
