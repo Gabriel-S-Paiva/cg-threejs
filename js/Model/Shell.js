@@ -321,4 +321,71 @@ export default class Shell extends THREE.Group{
         this.pet.update?.()
         this.chair.update?.()
     }
+
+    // Reset shell to default transform/state (called when switching camera modes)
+    resetDefault() {
+        // Reset transform to origin
+        this.position.set(0, 0, 0);
+        this.rotation.set(0, 0, 0);
+        this.updateMatrixWorld(true);
+
+        // Reset buttons visual state
+        if (this.buttons && Array.isArray(this.buttons)) {
+            this.buttons.forEach(b => { if (typeof b.setPressed === 'function') b.setPressed(false); });
+        }
+
+        // Delegate reset to pet if available
+        if (this.pet && typeof this.pet.resetDefault === 'function') {
+            try { this.pet.resetDefault(); } catch(e) {}
+        } else if (this.pet && this.pet.current_object && typeof this.pet.current_object.setState === 'function') {
+            try { this.pet.current_object.setState('idle'); } catch(e) {}
+        }
+
+        // Update physics wall kinematic positions immediately
+        if (this.wallBodies && this.wallBodies.length) {
+            const worldQuat = new THREE.Quaternion();
+            this.getWorldQuaternion(worldQuat);
+            this.wallBodies.forEach(wb => {
+                const worldPos = wb.localPos.clone().applyMatrix4(this.matrixWorld);
+                try {
+                    wb.body.setNextKinematicTranslation(worldPos);
+                    wb.body.setNextKinematicRotation(worldQuat);
+                } catch(e) {}
+            });
+        }
+
+        // Update any other physics colliders attached to the shell
+        if (this.physicsColliders && this.physicsColliders.length) {
+            this.physicsColliders.forEach(pc => {
+                try {
+                    if (pc.localPos) {
+                        const worldPos = pc.localPos.clone().applyMatrix4(this.matrixWorld);
+                        const worldQuat = new THREE.Quaternion();
+                        this.getWorldQuaternion(worldQuat);
+                        pc.body.setNextKinematicTranslation(worldPos);
+                        pc.body.setNextKinematicRotation(worldQuat);
+                    } else if (pc.mesh) {
+                        const worldPos = new THREE.Vector3();
+                        const worldQuat = new THREE.Quaternion();
+                        pc.mesh.getWorldPosition(worldPos);
+                        pc.mesh.getWorldQuaternion(worldQuat);
+                        pc.body.setNextKinematicTranslation(worldPos);
+                        pc.body.setNextKinematicRotation(worldQuat);
+                    }
+                } catch(e) {}
+            });
+        }
+
+        // Update window collider if present
+        if (this.windowCollider && this.windowCollider.body && this.windowMesh) {
+            try {
+                const wPos = new THREE.Vector3();
+                const wQuat = new THREE.Quaternion();
+                this.windowMesh.getWorldPosition(wPos);
+                this.windowMesh.getWorldQuaternion(wQuat);
+                this.windowCollider.body.setNextKinematicTranslation(wPos);
+                this.windowCollider.body.setNextKinematicRotation(wQuat);
+            } catch(e) {}
+        }
+    }
 }

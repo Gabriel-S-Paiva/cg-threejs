@@ -158,8 +158,18 @@ export default class App{
         window.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
             if (key === '1') this.cameraMode = 1;
-            if (key === '2') this.cameraMode = 2;
-            if (key === '3') this.cameraMode = 3;
+            if (key === '2') {
+                this.cameraMode = 2;
+                if (this.objects[0] && typeof this.objects[0].resetDefault === 'function') {
+                    this.objects[0].resetDefault();
+                }
+            }
+            if (key === '3') {
+                this.cameraMode = 3;
+                if (this.objects[0] && typeof this.objects[0].resetDefault === 'function') {
+                    this.objects[0].resetDefault();
+                }
+            }
 
             if (this.cameraMode === 2) {
                 if (key === 'w') this.moveInput.y = -1;
